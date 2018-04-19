@@ -364,10 +364,19 @@
 					});
 				}
 
+				// 该接口会坑爹的返回比预期的多1个元素
+				if (list.length > days) {
+					while (list.length > days) {
+						list.pop();
+					}
+				}
+
 				return list;
 			}
 
 			static async getHashRate(account, beginDate, endDate) {
+				const maxPageSize = 720; //最大分页大小
+
 				var beginTimeStamp = new Date(beginDate).getTime() / 1000;
 				var endTimeStamp = new Date(endDate).getTime() / 1000;
 				var days = (endTimeStamp - beginTimeStamp) / 3600 / 24;
@@ -378,18 +387,19 @@
 					beginTimeStamp = t;
 					days = -days;
 				}
+
 				// 起始时间和结束时间为同一天时得到0,所以+1
 				days += 1;
 				
-				if (days < 720) {
+				if (days < maxPageSize) {
 					return this._getHashRate(account, beginTimeStamp, days);
 				} else {
-					var time720d = 720 * 24 * 3600;
+					var maxPageTime = maxPageSize * 24 * 3600;
 					var fullList = [];
 
-					for (var t=beginTimeStamp; t<endTimeStamp; t+=time720d) {
+					for (var t=beginTimeStamp; t<=endTimeStamp; t+=maxPageTime) {
 						days = (endTimeStamp - t) / 24 / 3600 + 1;
-						days = Math.min(720, days);
+						days = Math.min(maxPageSize, days);
 
 						var result = await this._getHashRate(account, t, days);
 						fullList = $.extend(fullList, result);
@@ -525,7 +535,11 @@
 					}
 				}
 
-				return mergedList;
+				mergedList = Object.values(mergedList);
+
+				return mergedList.sort(function(a, b) {
+					return a.date > b.date;
+				});
 			}
 		}
 
