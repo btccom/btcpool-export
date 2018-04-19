@@ -173,6 +173,9 @@
 				beginDate: moment().subtract(7, 'days').format('YYYY-MM-DD'),
 				//结束时间
 				endDate: moment().format('YYYY-MM-DD'),
+				// 警告框数据
+				hasAlert: false,
+				alertText: '',
 			}
 			
 			constructor(props) {
@@ -181,31 +184,55 @@
 			}
 
 			async componentDidMount() {
-				this.subAccountData = await PoolAPI.getSubAccounts();
-				this.updateCoinList();
+				try {
+					this.subAccountData = await PoolAPI.getSubAccounts();
+					this.updateCoinList();
+
+				} catch (e) {
+					this.setState({
+						hasAlert: true,
+						alertText: e
+					});
+				}
 			}
 
 			updateCoinList() {
-				var newCoinList = [];
-				for (var coinType in this.subAccountData) {
-					newCoinList.push({value: coinType, label: coinType});
+				try {
+					var newCoinList = [];
+					for (var coinType in this.subAccountData) {
+						newCoinList.push({value: coinType, label: coinType});
+					}
+					this.setState({
+						coinList: newCoinList
+					});
+
+				} catch (e) {
+					this.setState({
+						hasAlert: true,
+						alertText: e
+					});
 				}
-				this.setState({
-					coinList: newCoinList
-				});
 			}
 
 			updateSubAccountList(coinType) {
-				var newSubAccountList = [
-					{value: 'all', label: '全部'}
-				];
-				for (var i in this.subAccountData[coinType]) {
-					var account = this.subAccountData[coinType][i];
-					newSubAccountList.push({value: account.puid.toString(), label: account.name});
+				try {
+					var newSubAccountList = [
+						{value: 'all', label: '全部'}
+					];
+					for (var i in this.subAccountData[coinType]) {
+						var account = this.subAccountData[coinType][i];
+						newSubAccountList.push({value: account.puid.toString(), label: account.name});
+					}
+					this.setState({
+						subAccountList: newSubAccountList
+					});
+					
+				} catch (e) {
+					this.setState({
+						hasAlert: true,
+						alertText: e
+					});
 				}
-				this.setState({
-					subAccountList: newSubAccountList
-				});
 			}
 
 			subAccountChanged(selected) {
@@ -240,6 +267,7 @@
 				<div>
 					<MainNavBar active="SelectSubAccount" />
 					<Panel header="请选择您要导出的币种、子账户及导出的时间段">
+						<HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
 						<Grid>
 							<Col sm={2}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.updateSubAccountList} /></Col>
 							<Col sm={2}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></Col>
