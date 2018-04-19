@@ -34,6 +34,13 @@
 		var NavItem = AMUIReact.NavItem;
 		var Selected = AMUIReact.Selected;
 		var DateTimeInput = AMUIReact.DateTimeInput;
+
+		function exceptionToString(e) {
+			if (typeof(e) == 'string') {
+				return e;
+			}
+			return '未知错误：' + JSON.stringify(e);
+		}
 		
 		class DataStore {
 			static getAccessKey() {
@@ -133,7 +140,7 @@
 				} catch (e) {
 					this.setState({
 						hasAlert: true,
-						alertText: e
+						alertText: exceptionToString(e)
 					});
 				}
 			}
@@ -196,7 +203,7 @@
 				} catch (e) {
 					this.setState({
 						hasAlert: true,
-						alertText: e
+						alertText: exceptionToString(e)
 					});
 				}
 			}
@@ -214,7 +221,7 @@
 				} catch (e) {
 					this.setState({
 						hasAlert: true,
-						alertText: e
+						alertText: exceptionToString(e)
 					});
 				}
 			}
@@ -239,7 +246,7 @@
 				} catch (e) {
 					this.setState({
 						hasAlert: true,
-						alertText: e
+						alertText: exceptionToString(e)
 					});
 				}
 			}
@@ -269,7 +276,7 @@
 				} catch (e) {
 					this.setState({
 						hasAlert: true,
-						alertText: e
+						alertText: exceptionToString(e)
 					});
 				}
 			}
@@ -288,6 +295,11 @@
 
 			async handleClickExport() {
 				try {
+					this.setState({
+						hasAlert: false,
+						alertText: ''
+					});
+
 					var coinType = this.state.selectedCoinType;
 					var beginDate = this.state.beginDate;
 					var endDate = this.state.endDate;
@@ -296,19 +308,19 @@
 						throw "请选择一个要导出的子账户";
 					}
 
-					for (var i in this.state.selectedSubAccounts) {
-						var account = this.state.selectedSubAccounts[i];
-						var fileName = coinType + '-' + account.name + '-(' + beginDate + ',' + endDate + ')' + '.csv';
-						var content = await PoolAPI.makeHashrateEarnCSV(account, beginDate, endDate);
+					for (let i in this.state.selectedSubAccounts) {
+						let account = this.state.selectedSubAccounts[i];
+						let fileName = coinType + '-' + account.name + '-(' + beginDate + ',' + endDate + ')' + '.csv';
+						let content = await PoolAPI.makeHashrateEarnCSV(account, beginDate, endDate);
 
-						var blob = new Blob([content], {type: "text/comma-separated-values;charset=utf-8"});
+						let blob = new Blob([content], {type: "text/comma-separated-values;charset=utf-8"});
 						saveAs(blob, fileName);
 					}
 					
 				} catch (e) {
 					this.setState({
 						hasAlert: true,
-						alertText: e
+						alertText: exceptionToString(e)
 					});
 				}
 			}
