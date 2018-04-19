@@ -246,7 +246,7 @@
 				try {
 					this.currentSubAccountIndex = {}
 					var newSubAccountList = [
-						{value: 'all', label: '全部', sortby: ''}
+						{value: 'all', label: '全部', sortby: '0'}
 					];
 
 					for (var i in this.subAccountData[coinType]) {
@@ -260,7 +260,7 @@
 					}
 
 					newSubAccountList.sort(function(a, b) {
-						return a.sortby > b.sortby;
+						return a.sortby.localeCompare(b.sortby);
 					});
 
 					this.setState({
@@ -332,7 +332,7 @@
 					var accountsNum = accounts.length;
 
 					accounts.sort(function(a, b) {
-						return a.region_name + '.' + a.name > b.region_name + '.' + b.name;
+						return (a.region_name + '.' + a.name).localeCompare(b.region_name + '.' + b.name);
 					});
 
 					if (accountsNum < 1) {
@@ -715,7 +715,7 @@
 				mergedList = Object.values(mergedList);
 
 				mergedList.sort(function(a, b) {
-					return a.date > b.date;
+					return a.date.localeCompare(b.date);
 				});
 
 				return mergedList;
