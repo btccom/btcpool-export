@@ -350,6 +350,12 @@
 
 				for (var i in result.data.tickers) {
 					var data = result.data.tickers[i];
+
+					// 当天没有算力就不加入
+					if (data[1] == 0 && data[2] == 0) {
+						continue;
+					}
+
 					list.push({
 						date: moment(data[0]*1000).format('YYYY-MM-DD'),
 						hashrate: data[1] + unit,
