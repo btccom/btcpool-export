@@ -34,6 +34,7 @@
 		var NavItem = AMUIReact.NavItem;
 		var Selected = AMUIReact.Selected;
 		var DateTimeInput = AMUIReact.DateTimeInput;
+		var Progress = AMUIReact.Progress;
 
 		function exceptionToString(e) {
 			if (typeof(e) == 'string') {
@@ -82,6 +83,14 @@
 				<Alert amStyle={props.amStyle}>
 					<p>{props.alertText}</p>
 				</Alert>
+			) : null;
+		}
+		
+		var HidableProgress = function(props) {
+			return props.now > 0 ? (
+				<Panel header={props.label}>
+					<Progress striped amStyle={props.amStyle} now={props.now} />
+				</Panel>
 			) : null;
 		}
 		
@@ -188,6 +197,9 @@
 				// 警告框数据
 				hasAlert: false,
 				alertText: '',
+				// 进度条数据
+				progress: 0,
+				progressText: '',
 			}
 			
 			constructor(props) {
@@ -230,14 +242,23 @@
 				try {
 					this.currentSubAccountIndex = {}
 					var newSubAccountList = [
-						{value: 'all', label: '全部'}
+						{value: 'all', label: '全部', sortby: ''}
 					];
 
 					for (var i in this.subAccountData[coinType]) {
 						var account = this.subAccountData[coinType][i];
 						this.currentSubAccountIndex[account.puid.toString()] = account;
-						newSubAccountList.push({value: account.puid.toString(), label: account.name});
+						newSubAccountList.push({
+							value: account.puid.toString(),
+							label: account.name + ' (' + account.region_name + ')',
+							sortby: account.region_name + '.' + account.name,
+						});
 					}
+
+					newSubAccountList.sort(function(a, b) {
+						return a.sortby > b.sortby;
+					});
+
 					this.setState({
 						selectedCoinType: coinType,
 						subAccountList: newSubAccountList
@@ -303,19 +324,42 @@
 					var coinType = this.state.selectedCoinType;
 					var beginDate = this.state.beginDate;
 					var endDate = this.state.endDate;
+					var accounts = Object.values(this.state.selectedSubAccounts);
+					var accountsNum = accounts.length;
 
-					if (this.state.selectedSubAccounts.length < 1) {
+					accounts.sort(function(a, b) {
+						return a.region_name + '.' + a.name > b.region_name + '.' + b.name;
+					});
+
+					if (accountsNum < 1) {
 						throw "请选择一个要导出的子账户";
 					}
 
-					for (let i in this.state.selectedSubAccounts) {
-						let account = this.state.selectedSubAccounts[i];
+					for (let i in accounts) {
+						let account = accounts[i];
 						let fileName = coinType + '-' + account.name + '-(' + beginDate + ',' + endDate + ')' + '.csv';
+						let pos = parseInt(i) + 1;
+
+						let newState = {
+							progress: pos / accountsNum * 100,
+							progressText: '(' + pos + '/' + accountsNum + ') 正在导出子账户 ' + 
+											account.name + ' (' + account.region_name + ')',
+						};
+						console.log(newState);
+						this.setState(newState);
+
 						let content = await PoolAPI.makeHashrateEarnCSV(account, beginDate, endDate);
 
 						let blob = new Blob([content], {type: "text/comma-separated-values;charset=utf-8"});
 						saveAs(blob, fileName);
 					}
+
+					let newState = {
+							progress: 100,
+							progressText: '(' + accountsNum + '/' + accountsNum + ') 导出完成',
+					};
+					console.log(newState);
+					this.setState(newState);
 					
 				} catch (e) {
 					this.setState({
@@ -343,6 +387,7 @@
 							<Col sm={2}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></Col>
 							<Col sm={2}><Button onClick={this.handleClickExport}>导出</Button></Col>
 						</Grid>
+						<HidableProgress now={this.state.progress} label={this.state.progressText} amStyle="success" />
 					</Panel>
 				</div>
 				);
@@ -392,13 +437,13 @@
 
 				var list = {/*
 					"BTC": [
-						{"puid":1, "name":"aaa", "endpoint":"cn-pool.api.btc.com"},
-						{"puid":2, "name":"xxx", "endpoint":"sz.pool.btc.com"},
+						{"puid":1, "name":"aaa", "endpoint":"cn-pool.api.btc.com", "region_name":"cn"},
+						{"puid":2, "name":"xxx", "endpoint":"sz-pool.api.btc.com", "region_name":"sz"},
 						...
 					],
 					"BCH": [
-						{"puid":6, "name":"fff", "endpoint":"us.pool.btc.com"},
-						{"puid":9, "name":"xxx_bcc", "endpoint":"sz.pool.btc.com"},
+						{"puid":6, "name":"fff", "endpoint":"us-bccpool.api.btc.com", "region_name":"us"},
+						{"puid":9, "name":"xxx_bcc", "endpoint":"sz-bccpool.api.btc.com", "region_name":"sz"},
 						...
 					],
 					...
@@ -417,6 +462,7 @@
 						puid: accountData.puid,
 						name: accountData.name,
 						endpoint: endpoint,
+						region_name: accountData.country_name,
 					};
 
 					if (list[accountData.coin_type] == undefined) {
