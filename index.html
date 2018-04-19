@@ -541,6 +541,49 @@
 					return a.date > b.date;
 				});
 			}
+
+			static async makeHashrateEarnCSV(account, beginDate, endDate) {
+				var list = await PoolAPI.getHashRateAndEarnList(account, beginDate, endDate);
+
+				// 没有BOM会导致某些软件打开CSV乱码
+				const unicodeBOM = "\uFEFF";
+				const headerFields = [
+					"日期",
+					"算力",
+					"拒绝率",
+					"收益(satoshi)",
+					"收益(BTC)",
+					"交易哈希",
+					"收款地址",
+					"备注"
+				];
+
+				var csv = unicodeBOM + headerFields.join(',') + "\n";
+
+				for (var i in list) {
+					var d = list[i];
+
+					if (typeof(d.unpaid_reason) == 'string') {
+						// 去除逗号和引号
+						d.unpaid_reason = d.unpaid_reason.replace(/[,"]/g, ' ');
+					}
+
+					var fields = [
+						d.date,
+						d.hashrate,
+						d.reject_rate,
+						d.paid_amount,
+						d.paid_amount / 100000000,
+						d.payment_tx,
+						d.address,
+						d.unpaid_reason,
+					];
+
+					csv += fields.join(',') + "\n";
+				}
+
+				return csv;
+			}
 		}
 
 		class MainWindow {
