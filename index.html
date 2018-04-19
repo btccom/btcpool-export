@@ -158,7 +158,10 @@
 		}
 		
 		class SelectSubAccount extends React.Component {
+			// 根据币种分类的子账户数据
 			subAccountData = [];
+			// 用于根据puid找到subAccount的索引
+			currentSubAccountIndex = {};
 
 			state = {
 				coinList: [
@@ -167,9 +170,10 @@
 				subAccountList: [
 					{value:'', label:'请先选择币种'}
 				],
-				// 选中的子账户，逗号分隔
-				// 全部为all
-				selectedSubAccounts: '',
+				// 选中的币种
+				selectedCoinType: '',
+				// 选中的子账户（从currentSubAccountIndex中查找）
+				selectedSubAccounts: [],
 				//开始时间
 				beginDate: moment().subtract(7, 'days').format('YYYY-MM-DD'),
 				//结束时间
@@ -215,16 +219,20 @@
 				}
 			}
 
-			updateSubAccountList(coinType) {
+			coinTypeChanged(coinType) {
 				try {
+					this.currentSubAccountIndex = {}
 					var newSubAccountList = [
 						{value: 'all', label: '全部'}
 					];
+
 					for (var i in this.subAccountData[coinType]) {
 						var account = this.subAccountData[coinType][i];
+						this.currentSubAccountIndex[account.puid.toString()] = account;
 						newSubAccountList.push({value: account.puid.toString(), label: account.name});
 					}
 					this.setState({
+						selectedCoinType: coinType,
 						subAccountList: newSubAccountList
 					});
 					
@@ -237,9 +245,33 @@
 			}
 
 			subAccountChanged(selected) {
-				this.setState({
-					selectedSubAccounts: selected
-				});
+				try {
+					var selectedList = selected.split(',');
+					var subAccounts = []
+
+					for (var i in selectedList) {
+						var key = selectedList[i]
+
+						if (key == "all") {
+							subAccounts = this.currentSubAccountIndex;
+							break;
+						}
+
+						if (this.currentSubAccountIndex[key] != undefined) {
+							subAccounts.push(this.currentSubAccountIndex[key])
+						}
+					}
+
+					this.setState({
+						selectedSubAccounts: subAccounts
+					});
+					
+				} catch (e) {
+					this.setState({
+						hasAlert: true,
+						alertText: e
+					});
+				}
 			}
 
 			beginTimeChanged(selected) {
@@ -270,7 +302,7 @@
 					<Panel header="请选择您要导出的币种、子账户及导出的时间段">
 						<HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
 						<Grid>
-							<Col sm={2}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.updateSubAccountList} /></Col>
+							<Col sm={2}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.coinTypeChanged} /></Col>
 							<Col sm={2}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></Col>
 							<Col sm={2}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></Col>
 							<Col sm={2}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></Col>
