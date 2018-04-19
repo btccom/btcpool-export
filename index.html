@@ -24,6 +24,10 @@
 		var Col = AMUIReact.Col;
 		var Article = AMUIReact.Article;
 		var Alert = AMUIReact.Alert;
+		var Topbar = AMUIReact.Topbar;
+		var CollapsibleNav = AMUIReact.CollapsibleNav;
+		var Nav = AMUIReact.Nav;
+		var NavItem = AMUIReact.NavItem;
 		
 		class DataStore {
 			static getAccessKey() {
@@ -54,6 +58,10 @@
 			static hasAccessKey() {
 				return this.getAccessKey() != null;
 			}
+
+			static clearAccessKey() {
+				localStorage.removeItem("btcpool.accesskey");
+			}
 		}
 		
 		var HidableAlert = function(props) {
@@ -62,6 +70,39 @@
 					<p>{props.alertText}</p>
 				</Alert>
 			) : null;
+		}
+		
+		function MainNavBar(props) {
+			var handleSelectSubAccount = function(props) {
+				if (props.active=="SelectSubAccount") {
+					return false;
+				}
+				MainWindow.init();
+			}
+			var handleSwitchUser = function(props) {
+				if (props.active=="SwitchUser") {
+					return false;
+				}
+				MainWindow.switchUser();
+			}
+			var handleExit = function(props) {
+				if (props.active=="Exit") {
+					return false;
+				}
+				MainWindow.exit();
+			}
+
+			return (
+				<Topbar brand="BTCPool算力导出工具" toggleNavKey="nav">
+					<CollapsibleNav eventKey="nav">
+					<Nav topbar>
+						<NavItem active={props.active=="SwitchUser"} onClick={(props)=>handleSwitchUser(props)} href="#">切换用户</NavItem>
+						<NavItem active={props.active=="SelectSubAccount"} onClick={(props)=>handleSelectSubAccount(props)} href="#">选择子账户</NavItem>
+						<NavItem active={props.active=="Exit"} onClick={(props)=>handleExit(props)} href="#">退出</NavItem>
+					</Nav>
+					</CollapsibleNav>
+				</Topbar>
+			);
 		}
 		
 		class InputAccessKey extends React.Component {
@@ -82,8 +123,7 @@
 			
 			handleClickNextStep() {
 				try {
-					DataStore.setAccessKey(this.state.accessKey);
-					MainWindow.show(<SelectSubAccount />);
+					MainWindow.saveAccessKey(this.state.accessKey);
 				} catch (e) {
 					this.setState({
 						hasAlert: true,
@@ -94,6 +134,8 @@
 
 			render() {
 				return (
+				<div>
+					<MainNavBar active="SwitchUser" />
 					<Panel header="请输入您从BTCPool获取的币看监控密钥" amStyle="primary">
 						<HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
 						<Grid>
@@ -103,10 +145,11 @@
 						<p>导出工具需要获得您的授权才能导出您在BTCPool的算力数据，而给予授权最简单的方式就是提供“币看监控密钥”。</p>
 						<p>您可以<a href="https://pool.btc.com/dashboard">登录BTCPool</a>，点击右上角的“设置”按钮，然后选择“共享数据”，再点击“获取币看监控密钥”，最后，将其中的“AccessKey”粘贴到上方的输入框即可。</p>
 						<p>注意，请<b>妥善保管</b>您的“币看监控密钥”，<b>不要将其提供给任何不信任的人</b>。获得您的“币看监控密钥”相当于获得了您在矿池的登录状态，可以代替您在矿池进行一系列操作，包括但不限于创建子账户、切换币种等。</p>
-						<p>本工具将会把您的“币看监控密钥”存储在您的浏览器中，且只能被本工具在您的浏览器上存取和使用。您的“币看监控密钥”<b>绝对不会</b>被发送到任何服务器或第三方手中。本工具也允许您随时删除存储在浏览器中的“币看监控密钥”。</p>
+						<p>本工具将会把您的“币看监控密钥”存储在您的浏览器中，且只能被本工具在您的浏览器上存取和使用。您的“币看监控密钥”<b>绝对不会</b>被发送到任何服务器或第三方手中。在您点击菜单栏的“退出”按钮时，存储的“币看监控密钥”将被清除。</p>
 						<p>但是请注意，如果您从其他地方（而不是 <a href="https://yihaopeng.github.com/btcpool-export">https://yihaopeng.github.com/btcpool-export</a>）获得了本工具，作者不保证其他人没有对该工具进行修改。<b>本工具的作者不对使用其他来源的工具导致您的“币看监控密钥”被盗或其他任何损失负责。</b></p>
 						<p>最后，您可以从 <a href="https://github.com/YihaoPeng/btcpool-export">https://github.com/YihaoPeng/btcpool-export</a> 获取本工具的代码并检查其行为。使用本工具意味着<b>您同意本工具对您的BTCPool帐户进行访问</b>，且<b>信任本工具不会对您的权益造成任何损害</b>。如果您不信任本工具，请不要输入您的“币看监控密钥”。</p>
 					</Panel>
+				</div>
 				);
 			}
 		}
@@ -114,7 +157,21 @@
 		class SelectSubAccount extends React.Component {
 			render() {
 				return (
-					<h1>SelectSubAccount</h1>
+				<div>
+					<MainNavBar active="SelectSubAccount" />
+				</div>
+				);
+			}
+		}
+
+		class ExitPage extends React.Component {
+			render() {
+				return (
+				<div>
+					<MainNavBar active="Exit" />
+					<p>您已退出，您的“币看监控密钥”已从浏览器移除。</p>
+					<p>若想再次使用本工具，请点击导航栏上的“切换用户”按钮。</p>
+				</div>
 				);
 			}
 		}
@@ -124,17 +181,30 @@
 				ReactDOM.render(content,document.getElementById('MainWindow'));
 			}
 		
-			init() {
+			static init() {
 				if (DataStore.hasAccessKey()) {
 					MainWindow.show(<SelectSubAccount />);
 				} else {
 					MainWindow.show(<InputAccessKey />);
 				}
 			}
+
+			static saveAccessKey(ak) {
+				DataStore.setAccessKey(ak);
+				MainWindow.show(<SelectSubAccount />);
+			}
+
+			static switchUser() {
+				MainWindow.show(<InputAccessKey />);
+			}
+
+			static exit() {
+				DataStore.clearAccessKey();
+				MainWindow.show(<ExitPage />);
+			}
 		}
 		
-		var mainWindow = new MainWindow();
-		mainWindow.init();
+		MainWindow.init();
 	</script>
 </body>
 </html>
