@@ -296,7 +296,7 @@
 
 		class PoolAPI {
 			static defaultEndpoint = 'cn-pool.api.btc.com';
-			static endpointSuffix = '-pool.api.btc.com';
+			static endpointSuffix = 'pool.api.btc.com';
 
 			static ak() {
 				var ak = DataStore.getAccessKey();
@@ -325,13 +325,13 @@
 
 				var list = {/*
 					"BTC": [
-						{"puid":1, "name":"aaa", "endpoint":"https://cn.pool.btc.com/v1/"},
-						{"puid":2, "name":"xxx", "endpoint":"https://sz.pool.btc.com/v1/"},
+						{"puid":1, "name":"aaa", "endpoint":"cn-pool.api.btc.com"},
+						{"puid":2, "name":"xxx", "endpoint":"sz.pool.btc.com"},
 						...
 					],
 					"BCH": [
-						{"puid":6, "name":"fff", "endpoint":"https://us.pool.btc.com/v1/"},
-						{"puid":9, "name":"xxx_bcc", "endpoint":"https://sz.pool.btc.com/v1/"},
+						{"puid":6, "name":"fff", "endpoint":"us.pool.btc.com"},
+						{"puid":9, "name":"xxx_bcc", "endpoint":"sz.pool.btc.com"},
 						...
 					],
 					...
@@ -339,10 +339,17 @@
 
 				for (var i in result.data.display) {
 					var accountData = result.data.display[i];
+
+					// region_name: "cn", endpoint: "cn-pool.api.btc.com"
+					// region_name: "cn_ubtc", endpoint: "cn-ubtcpool.api.btc.com"
+					var endpoint = accountData.region_name.replace(/_/g, '-');
+					if (endpoint.match(/-/) == null) { endpoint += '-'; }
+					endpoint += PoolAPI.endpointSuffix;
+
 					var account = {
 						puid: accountData.puid,
 						name: accountData.name,
-						endpoint: accountData.default_url,
+						endpoint: endpoint,
 					};
 
 					if (list[accountData.coin_type] == undefined) {
