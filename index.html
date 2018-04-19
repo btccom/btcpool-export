@@ -7,6 +7,7 @@
 	<title>BTCPool算力导出工具</title>
 	<meta name="renderer" content="webkit">
 	<link rel="stylesheet" href="./css/amazeui.css"/>
+	<script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.js"></script>
 	<script src="https://cdn.bootcss.com/react/15.4.2/react.js"></script>
 	<script src="https://cdn.bootcss.com/react/15.4.2/react-dom.js"></script>
 	<script src="https://cdn.bootcss.com/babel-standalone/6.22.1/babel.js"></script>
@@ -153,6 +154,10 @@
 				);
 			}
 		}
+
+		function SubAccountList(props) {
+			
+		}
 		
 		class SelectSubAccount extends React.Component {
 			render() {
@@ -174,6 +179,69 @@
 				</div>
 				);
 			}
+		}
+
+		class PoolAPI {
+			static defaultEndpoint = 'https://cn-pool.api.btc.com/v1/';
+
+			static ak() {
+				var ak = DataStore.getAccessKey();
+				if (ak == null) {
+					throw "币看监控密钥为空";
+				}
+				return ak;
+			}
+
+			static get(endpoint, api, params) {
+				if (typeof(params) != 'object') {
+					params = {};
+				}
+				params.access_key = PoolAPI.ak();
+				return $.get(endpoint + api, params);
+			}
+
+			static getSubAccounts() {
+				return PoolAPI.get(PoolAPI.defaultEndpoint, 'account/sub-account/morelist').then((result)=>{
+					if (typeof(result) != 'object') {
+						throw "获取子账户列表失败，结果不是对象：" + JSON.stringify(result);
+					}
+					if (result.err_no != 0) {
+						throw "获取子账户列表失败：" + result.err_msg;
+					}
+
+					var list = {/*
+						"BTC": [
+							{"puid":1, "name":"aaa", "endpoint":"https://cn.pool.btc.com/v1/"},
+							{"puid":2, "name":"xxx", "endpoint":"https://sz.pool.btc.com/v1/"},
+							...
+						],
+						"BCH": [
+							{"puid":6, "name":"fff", "endpoint":"https://us.pool.btc.com/v1/"},
+							{"puid":9, "name":"xxx_bcc", "endpoint":"https://sz.pool.btc.com/v1/"},
+							...
+						],
+						...
+					*/};
+
+					for (var i in result.data.display) {
+						var accountData = result.data.display[i];
+						var account = {
+							puid: accountData.puid,
+							name: accountData.name,
+							endpoint: accountData.default_url,
+						};
+
+						if (list[accountData.coin_type] == undefined) {
+							list[accountData.coin_type] = [];
+						}
+						list[accountData.coin_type].push(account);
+					}
+
+					return list;
+				});
+			}
+
+
 		}
 		
 		class MainWindow {
