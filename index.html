@@ -16,6 +16,7 @@
 	<script src="./js/autoBind.js"></script>
 	<script src="./js/moment.min.js"></script>
 	<script src="./js/FileSaver.js"></script>
+	<script src="./js/jszip.min.js"></script>
 </head>
 <body>
 	<div id="MainWindow"></div>
@@ -335,6 +336,11 @@
 						throw "请选择一个要导出的子账户";
 					}
 
+					if (accountsNum > 1) {
+						var zipName = coinType + '-all-(' + beginDate + ',' + endDate + ')' + '.zip';
+						var zip = new JSZip();
+					}
+
 					for (let i in accounts) {
 						let account = accounts[i];
 						let fileName = coinType + '-' + account.name + '-(' + beginDate + ',' + endDate + ')' + '.csv';
@@ -351,7 +357,26 @@
 						let content = await PoolAPI.makeHashrateEarnCSV(account, beginDate, endDate);
 
 						let blob = new Blob([content], {type: "text/comma-separated-values;charset=utf-8"});
-						saveAs(blob, fileName);
+
+						if (accountsNum > 1) {
+							// 多个文件，加入压缩包
+							zip.file(fileName, blob);
+						} else {
+							// 单个文件直接下载
+							saveAs(blob, fileName);
+						}
+					}
+
+					if (accountsNum > 1) {
+						let newState = {
+							progress: 100,
+							progressText: '(' + accountsNum + '/' + accountsNum + ') 生成压缩包',
+						};
+						console.log(newState);
+						this.setState(newState);
+
+						let content = await zip.generateAsync({type:"blob"});
+						saveAs(content, zipName);
 					}
 
 					let newState = {
@@ -686,9 +711,11 @@
 
 				mergedList = Object.values(mergedList);
 
-				return mergedList.sort(function(a, b) {
+				mergedList.sort(function(a, b) {
 					return a.date > b.date;
 				});
+
+				return mergedList;
 			}
 
 			static async makeHashrateEarnCSV(account, beginDate, endDate) {
