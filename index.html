@@ -170,9 +170,9 @@
 				// 全部为all
 				selectedSubAccounts: '',
 				//开始时间
-				beginDate: moment(new Date()-7*24*3600*1000).format('YYYY-MM-DD'),
+				beginDate: moment().subtract(7, 'days').format('YYYY-MM-DD'),
 				//结束时间
-				endDate: moment(new Date()).format('YYYY-MM-DD'),
+				endDate: moment().format('YYYY-MM-DD'),
 			}
 			
 			constructor(props) {
@@ -226,7 +226,7 @@
 				});
 			}
 
-			handleClickNextStep() {
+			handleClickExport() {
 				console.log(this.state);
 			}
 
@@ -245,7 +245,7 @@
 							<Col sm={2}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></Col>
 							<Col sm={2}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></Col>
 							<Col sm={2}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></Col>
-							<Col sm={2}><Button onClick={this.handleClickNextStep}>下一步</Button></Col>
+							<Col sm={2}><Button onClick={this.handleClickExport}>导出</Button></Col>
 						</Grid>
 					</Panel>
 				</div>
