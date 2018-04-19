@@ -290,7 +290,7 @@
 					throw "获取子账户列表失败，结果不是对象：" + JSON.stringify(result);
 				}
 				if (result.err_no != 0) {
-					throw "获取子账户列表失败：" + result.err_msg;
+					throw "获取子账户列表失败：" + JSON.stringify(result.err_msg);
 				}
 
 				var list = {/*
@@ -337,7 +337,7 @@
 					throw "获取算力列表失败，结果不是对象：" + JSON.stringify(result);
 				}
 				if (result.err_no != 0) {
-					throw "获取算力列表失败：" + result.err_msg;
+					throw "获取算力列表失败：" + JSON.stringify(result.err_msg);
 				}
 
 				var list = [/*
@@ -382,8 +382,86 @@
 
 				return this._getHashRate(account, beginTimeStamp, days);
 			}
+
+			static async _getEarnList(account, page) {
+				var params = {
+					puid: account.puid,
+					page: page,
+					reason: 1,
+					page_size: 50,
+				};
+
+				var result = await PoolAPI.get(account.endpoint, 'account/earn-history', params);
+				console.log(result);
+				if (typeof(result) != 'object') {
+					throw "获取收益列表失败，结果不是对象：" + JSON.stringify(result);
+				}
+				if (result.err_no != 0) {
+					throw "获取收益列表失败：" + JSON.stringify(result.err_msg);
+				}
+
+				return result.data.list;
+			}
+
+			static async getEarnList(account, beginDate, endDate) {
+				var beginTimeStamp = moment(beginDate).toDate().getTime();
+				var endTimeStamp = moment(endDate).toDate().getTime();
+
+				if (endTimeStamp < beginTimeStamp) {
+					var t = endTimeStamp;
+					endTimeStamp = beginTimeStamp;
+					beginTimeStamp = t;
+				}
+
+				var fullList = [/*
+					{ date: '2018-01-01', earn: 38000, paid_amount: 38000, payment_tx: '', address: '', unpaid_reason: 'xxxxx' },
+					{ date: '2018-01-01', earn: 66666666, paid_amount: 66666666, payment_tx: 'xxxxx', address: 'xxxxx', unpaid_reason: '' },
+					...
+				*/];
+
+				var minTime = endTimeStamp;
+				for (var p=1; minTime >= beginTimeStamp; p++) {
+
+					// 整个partList是按照从最新到最老（时间逆序）排列的
+					var partList = await PoolAPI._getEarnList(account, p);
+					if (typeof(partList) != 'object' || partList.length == undefined || partList.length < 1) {
+						break;
+					}
+
+					for (var i in partList) {
+						var record = partList[i];
+						var time = moment(record.date, 'YYYYMMDD').toDate().getTime();
+						
+						// 新于结束时间
+						if (time > endTimeStamp) {
+							continue;
+						}
+
+						if (time < minTime) {
+							minTime = time;
+						}
+						
+						// 老于开始时间
+						if (time < beginTimeStamp) {
+							break;
+						}
+
+						// 符合时间范围，加入到结果中
+						fullList.push({
+							date: moment(record.date, 'YYYYMMDD').format('YYYY-MM-DD'),
+							earn: record.earnings,
+							paid_amount: record.paid_amount,
+							payment_tx: record.payment_tx,
+							address: record.address,
+							unpaid_reason: record.unpaid_reason,
+						});
+					}
+				}
+
+				return fullList;
+			}
 		}
-		
+
 		class MainWindow {
 			static show(content) {
 				ReactDOM.render(content,document.getElementById('MainWindow'));
