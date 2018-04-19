@@ -258,7 +258,7 @@
 						}
 
 						if (this.currentSubAccountIndex[key] != undefined) {
-							subAccounts.push(this.currentSubAccountIndex[key])
+							subAccounts.push(this.currentSubAccountIndex[key]);
 						}
 					}
 
@@ -286,8 +286,31 @@
 				});
 			}
 
-			handleClickExport() {
-				console.log(this.state);
+			async handleClickExport() {
+				try {
+					var coinType = this.state.selectedCoinType;
+					var beginDate = this.state.beginDate;
+					var endDate = this.state.endDate;
+
+					if (this.state.selectedSubAccounts.length < 1) {
+						throw "请选择一个要导出的子账户";
+					}
+
+					for (var i in this.state.selectedSubAccounts) {
+						var account = this.state.selectedSubAccounts[i];
+						var fileName = coinType + '-' + account.name + '-(' + beginDate + ',' + endDate + ')' + '.csv';
+						var content = await PoolAPI.makeHashrateEarnCSV(account, beginDate, endDate);
+
+						var blob = new Blob([content], {type: "text/comma-separated-values;charset=utf-8"});
+						saveAs(blob, fileName);
+					}
+					
+				} catch (e) {
+					this.setState({
+						hasAlert: true,
+						alertText: e
+					});
+				}
 			}
 
 			render() {
