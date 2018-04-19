@@ -268,7 +268,7 @@
 		}
 
 		class PoolAPI {
-			static defaultEndpoint = 'https://cn-pool.api.btc.com/v1/';
+			static defaultEndpoint = 'cn-pool.api.btc.com';
 
 			static ak() {
 				var ak = DataStore.getAccessKey();
@@ -283,7 +283,7 @@
 					params = {};
 				}
 				params.access_key = PoolAPI.ak();
-				return $.get(endpoint + api, params);
+				return $.get('https://' + endpoint + '/v1/' + api, params);
 			}
 
 			static getSubAccounts() {
@@ -327,7 +327,59 @@
 				});
 			}
 
+			static _getHashRate(account, beginTimeStamp, days) {
+				var params = {
+					puid: account.puid,
+					dimension: '1d',
+					start_ts: beginTimeStamp,
+					count: days,
+				};
 
+				return PoolAPI.get(account.endpoint, 'worker/share-history', params).then((result)=>{
+					if (typeof(result) != 'object') {
+						throw "获取算力列表失败，结果不是对象：" + JSON.stringify(result);
+					}
+					if (result.err_no != 0) {
+						throw "获取算力列表失败：" + result.err_msg;
+					}
+
+					var list = [/*
+						{ date: '2018-01-01', hashrate: '1.25P', reject_rate: '0.5%' },
+						{ date: '2018-01-02', hashrate: '2P', reject_rate: '0.3%' },
+						...
+					*/];
+
+					var unit = result.data.shares_unit;
+
+					for (var i in result.data.tickers) {
+						var data = result.data.tickers[i];
+						list.push({
+							date: moment(data[0]*1000).format('YYYY-MM-DD'),
+							hashrate: data[1] + unit,
+							reject_rate: (data[2] * 100).toString().substr(0, 6) + '%'
+						});
+					}
+
+					return list;
+				});
+			}
+
+			static getHashRate(account, beginDate, endDate) {
+				var beginTimeStamp = new Date(beginDate).getTime() / 1000;
+				var endTimeStamp = new Date(endDate).getTime() / 1000;
+				var days = (endTimeStamp - beginTimeStamp) / 3600 / 24;
+
+				if (days < 0) {
+					var t = endTimeStamp;
+					endTimeStamp = beginTimeStamp;
+					beginTimeStamp = t;
+					days = -days;
+				}
+				// 起始时间和结束时间为同一天时得到0,所以+1
+				days += 1;
+
+				return this._getHashRate(account, beginTimeStamp, days);
+			}
 		}
 		
 		class MainWindow {
