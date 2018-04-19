@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head lang="zh-cn">
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>BTCPool算力导出工具</title>
+	<meta name="renderer" content="webkit">
+	<link rel="stylesheet" href="./css/amazeui.css"/>
+	<script src="https://cdn.bootcss.com/react/15.4.2/react.js"></script>
+	<script src="https://cdn.bootcss.com/react/15.4.2/react-dom.js"></script>
+	<script src="https://cdn.bootcss.com/babel-standalone/6.22.1/babel.js"></script>
+	<script src="./js/amazeui.react.js"></script>
+	<script src="./js/polyfill.js"></script>
+	<script src="./js/autoBind.js"></script>
+</head>
+<body>
+	<div id="MainWindow"></div>
+	<script type="text/babel">
+		var Button = AMUIReact.Button;
+		var Input = AMUIReact.Input;
+		var Panel = AMUIReact.Panel;
+		var Grid = AMUIReact.Grid;
+		var Col = AMUIReact.Col;
+		var Article = AMUIReact.Article;
+		var Alert = AMUIReact.Alert;
+		
+		class DataStore {
+			static getAccessKey() {
+				var ak = localStorage.getItem("btcpool.accesskey");
+				if (typeof(ak) != "string") {
+					ak = null;
+				}
+				return ak;
+			}
+			
+			static setAccessKey(ak) {
+				if (typeof(ak) != "string") {
+					throw "币看监控密钥必须为字符串";
+				}
+				
+				ak = ak.trim()
+				
+				if (ak.length == 0) {
+					throw "币看监控密钥不能为空";
+				}
+				if (ak.length < 20) {
+					throw "币看监控密钥过短，请确认您已输入完整";
+				}
+				
+				localStorage.setItem("btcpool.accesskey", ak.trim());
+			}
+			
+			static hasAccessKey() {
+				return this.getAccessKey() != null;
+			}
+		}
+		
+		var HidableAlert = function(props) {
+			return props.visible ? (
+				<Alert amStyle={props.amStyle}>
+					<p>{props.alertText}</p>
+				</Alert>
+			) : null;
+		}
+		
+		class InputAccessKey extends React.Component {
+			state = {
+				accessKey: '',
+				hasAlert: false,
+				alertText: '',
+			}
+			
+			constructor(props) {
+				super(props);
+				autoBind(this);
+			}
+			
+			handleAccessKeyChange(e) {
+				this.setState({ accessKey: e.target.value });
+			}
+			
+			handleClickNextStep() {
+				try {
+					DataStore.setAccessKey(this.state.accessKey);
+					MainWindow.show(<SelectSubAccount />);
+				} catch (e) {
+					this.setState({
+						hasAlert: true,
+						alertText: e
+					});
+				}
+			}
+
+			render() {
+				return (
+					<Panel header="请输入您从BTCPool获取的币看监控密钥" amStyle="primary">
+						<HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
+						<Grid>
+							<Col sm={8}><Input type="password" placeholder="币看监控密钥" onChange={this.handleAccessKeyChange} /></Col>
+							<Col sm={2}><Button onClick={this.handleClickNextStep}>下一步</Button></Col>
+						</Grid>
+						<p>导出工具需要获得您的授权才能导出您在BTCPool的算力数据，而给予授权最简单的方式就是提供“币看监控密钥”。</p>
+						<p>您可以<a href="https://pool.btc.com/dashboard">登录BTCPool</a>，点击右上角的“设置”按钮，然后选择“共享数据”，再点击“获取币看监控密钥”，最后，将其中的“AccessKey”粘贴到上方的输入框即可。</p>
+						<p>注意，请<b>妥善保管</b>您的“币看监控密钥”，<b>不要将其提供给任何不信任的人</b>。获得您的“币看监控密钥”相当于获得了您在矿池的登录状态，可以代替您在矿池进行一系列操作，包括但不限于创建子账户、切换币种等。</p>
+						<p>本工具将会把您的“币看监控密钥”存储在您的浏览器中，且只能被本工具在您的浏览器上存取和使用。您的“币看监控密钥”<b>绝对不会</b>被发送到任何服务器或第三方手中。本工具也允许您随时删除存储在浏览器中的“币看监控密钥”。</p>
+						<p>但是请注意，如果您从其他地方（而不是 <a href="https://yihaopeng.github.com/btcpool-export">https://yihaopeng.github.com/btcpool-export</a>）获得了本工具，作者不保证其他人没有对该工具进行修改。<b>本工具的作者不对使用其他来源的工具导致您的“币看监控密钥”被盗或其他任何损失负责。</b></p>
+						<p>最后，您可以从 <a href="https://github.com/YihaoPeng/btcpool-export">https://github.com/YihaoPeng/btcpool-export</a> 获取本工具的代码并检查其行为。使用本工具意味着<b>您同意本工具对您的BTCPool帐户进行访问</b>，且<b>信任本工具不会对您的权益造成任何损害</b>。如果您不信任本工具，请不要输入您的“币看监控密钥”。</p>
+					</Panel>
+				);
+			}
+		}
+		
+		class SelectSubAccount extends React.Component {
+			render() {
+				return (
+					<h1>SelectSubAccount</h1>
+				);
+			}
+		}
+		
+		class MainWindow {
+			static show(content) {
+				ReactDOM.render(content,document.getElementById('MainWindow'));
+			}
+		
+			init() {
+				if (DataStore.hasAccessKey()) {
+					MainWindow.show(<SelectSubAccount />);
+				} else {
+					MainWindow.show(<InputAccessKey />);
+				}
+			}
+		}
+		
+		var mainWindow = new MainWindow();
+		mainWindow.init();
+	</script>
+</body>
+</html>

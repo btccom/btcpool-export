@@ -1,0 +1,18 @@
+{
+  "name": "btcpool-export",
+  "version": "0.0.1",
+  "author": "YihaoPeng",
+  "description": "BTCPool算力导出工具",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YihaoPeng/btcpool-export"
+  },
+  "dependencies": {
+    "amazeui-react": "^1.2.3",
+    "babel": "^6.23.0",
+    "react": "^15.0.1",
+    "react-autobind": "^1.0.6",
+    "react-dom": "^15.0.1"
+  }
+}
