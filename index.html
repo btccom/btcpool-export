@@ -29,6 +29,7 @@
 		var CollapsibleNav = AMUIReact.CollapsibleNav;
 		var Nav = AMUIReact.Nav;
 		var NavItem = AMUIReact.NavItem;
+		var Selected = AMUIReact.Selected;
 		
 		class DataStore {
 			static getAccessKey() {
@@ -137,7 +138,7 @@
 				return (
 				<div>
 					<MainNavBar active="SwitchUser" />
-					<Panel header="请输入您从BTCPool获取的币看监控密钥" amStyle="primary">
+					<Panel header="请输入您从BTCPool获取的币看监控密钥">
 						<HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
 						<Grid>
 							<Col sm={8}><Input type="password" placeholder="币看监控密钥" onChange={this.handleAccessKeyChange} /></Col>
@@ -145,25 +146,75 @@
 						</Grid>
 						<p>导出工具需要获得您的授权才能导出您在BTCPool的算力数据，而给予授权最简单的方式就是提供“币看监控密钥”。</p>
 						<p>您可以<a href="https://pool.btc.com/dashboard">登录BTCPool</a>，点击右上角的“设置”按钮，然后选择“共享数据”，再点击“获取币看监控密钥”，最后，将其中的“AccessKey”粘贴到上方的输入框即可。</p>
-						<p>注意，请<b>妥善保管</b>您的“币看监控密钥”，<b>不要将其提供给任何不信任的人</b>。获得您的“币看监控密钥”相当于获得了您在矿池的登录状态，可以代替您在矿池进行一系列操作，包括但不限于创建子账户、切换币种等。</p>
-						<p>本工具将会把您的“币看监控密钥”存储在您的浏览器中，且只能被本工具在您的浏览器上存取和使用。您的“币看监控密钥”<b>绝对不会</b>被发送到任何服务器或第三方手中。在您点击菜单栏的“退出”按钮时，存储的“币看监控密钥”将被清除。</p>
-						<p>但是请注意，如果您从其他地方（而不是 <a href="https://yihaopeng.github.com/btcpool-export">https://yihaopeng.github.com/btcpool-export</a>）获得了本工具，作者不保证其他人没有对该工具进行修改。<b>本工具的作者不对使用其他来源的工具导致您的“币看监控密钥”被盗或其他任何损失负责。</b></p>
-						<p>最后，您可以从 <a href="https://github.com/YihaoPeng/btcpool-export">https://github.com/YihaoPeng/btcpool-export</a> 获取本工具的代码并检查其行为。使用本工具意味着<b>您同意本工具对您的BTCPool帐户进行访问</b>，且<b>信任本工具不会对您的权益造成任何损害</b>。如果您不信任本工具，请不要输入您的“币看监控密钥”。</p>
+						<p>注意，请<b>妥善保管</b>您的“币看监控密钥”，<b>不要将其提供给任何不信任的人或网站</b>。获得您的“币看监控密钥”相当于获得了您在矿池的登录状态，可以代替您在矿池进行一系列操作，包括但不限于创建子账户、切换币种等。</p>
 					</Panel>
 				</div>
 				);
 			}
 		}
-
-		function SubAccountList(props) {
-			
-		}
 		
 		class SelectSubAccount extends React.Component {
+			subAccountData = [];
+
+			state = {
+				coinList: [
+					{value:'', label:'您没有子账户'}
+				],
+				subAccountList: [
+					{value:'', label:'请先选择币种'}
+				],
+				// 选中的子账户，逗号分隔
+				// 全部为all
+				selectedSubAccounts: '',
+			}
+			
+			constructor(props) {
+				super(props);
+				autoBind(this);
+			}
+
+			componentDidMount() {
+				PoolAPI.getSubAccounts().then((subAccounts)=>{
+					this.subAccountData = subAccounts;
+					this.updateCoinList();
+				});
+			}
+
+			updateCoinList() {
+				var newCoinList = [];
+				for (var coinType in this.subAccountData) {
+					newCoinList.push({value: coinType, label: coinType});
+				}
+				this.setState({
+					coinList: newCoinList
+				});
+			}
+
+			updateSubAccountList(coinType) {
+				var newSubAccountList = [
+					{value: 'all', label: '全部'}
+				];
+				for (var i in this.subAccountData[coinType]) {
+					var account = this.subAccountData[coinType][i];
+					newSubAccountList.push({value: account.puid.toString(), label: account.name});
+				}
+				this.setState({
+					subAccountList: newSubAccountList
+				});
+			}
+
+			subAccountChanged(selected) {
+				console.log(selected);
+			}
+
 			render() {
 				return (
 				<div>
 					<MainNavBar active="SelectSubAccount" />
+					<Panel header="请选择您要导出的币种、子账户及导出的时间段">
+						<Selected data={this.state.coinList} placeholder="选择币种" onChange={this.updateSubAccountList} />
+						<Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} />
+					</Panel>
 				</div>
 				);
 			}
