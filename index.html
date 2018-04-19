@@ -161,7 +161,7 @@
 
 			state = {
 				coinList: [
-					{value:'', label:'您没有子账户'}
+					{value:'', label:'加载中...'}
 				],
 				subAccountList: [
 					{value:'', label:'请先选择币种'}
@@ -267,6 +267,7 @@
 
 		class PoolAPI {
 			static defaultEndpoint = 'cn-pool.api.btc.com';
+			static endpointSuffix = '-pool.api.btc.com';
 
 			static ak() {
 				var ak = DataStore.getAccessKey();
@@ -366,7 +367,7 @@
 				return list;
 			}
 
-			static getHashRate(account, beginDate, endDate) {
+			static async getHashRate(account, beginDate, endDate) {
 				var beginTimeStamp = new Date(beginDate).getTime() / 1000;
 				var endTimeStamp = new Date(endDate).getTime() / 1000;
 				var days = (endTimeStamp - beginTimeStamp) / 3600 / 24;
@@ -379,8 +380,23 @@
 				}
 				// 起始时间和结束时间为同一天时得到0,所以+1
 				days += 1;
+				
+				if (days < 720) {
+					return this._getHashRate(account, beginTimeStamp, days);
+				} else {
+					var time720d = 720 * 24 * 3600;
+					var fullList = [];
 
-				return this._getHashRate(account, beginTimeStamp, days);
+					for (var t=beginTimeStamp; t<endTimeStamp; t+=time720d) {
+						days = (endTimeStamp - t) / 24 / 3600 + 1;
+						days = Math.min(720, days);
+
+						var result = await this._getHashRate(account, t, days);
+						fullList = $.extend(fullList, result);
+					}
+
+					return fullList;
+				}
 			}
 
 			static async _getEarnList(account, page) {
@@ -392,7 +408,7 @@
 				};
 
 				var result = await PoolAPI.get(account.endpoint, 'account/earn-history', params);
-				console.log(result);
+
 				if (typeof(result) != 'object') {
 					throw "获取收益列表失败，结果不是对象：" + JSON.stringify(result);
 				}
@@ -459,6 +475,57 @@
 				}
 
 				return fullList;
+			}
+
+			static async getHashRateAndEarnList(account, beginDate, endDate) {
+				var [hashrateList, earnList] = await Promise.all([
+					PoolAPI.getHashRate(account, beginDate, endDate),
+					PoolAPI.getEarnList(account, beginDate, endDate)
+				]);
+
+				var mergedList = {/*
+					"2018-01-01": {
+						hashrate: '1.25P',
+						reject_rate: '0.5%',
+						earn: 38000,
+						paid_amount: 38000,
+						payment_tx: '',
+						address: '',
+						unpaid_reason: 'xxxxx'
+					},
+					"2018-01-02": {
+						hashrate: '2P',
+						reject_rate: '0.3%',
+						earn: 66666666,
+						paid_amount: 66666666,
+						payment_tx: 'xxxxx',
+						address: 'xxxxx',
+						unpaid_reason: ''
+					},
+					...
+				*/};
+
+				// 合并两个结果集
+
+				for (var i in hashrateList) {
+					var data = hashrateList[i];
+					var key = data.date;
+
+					mergedList[key] = data;
+				}
+
+				for (var i in earnList) {
+					var data = earnList[i];
+					var key = data.date;
+					
+					if (mergedList[key] == undefined) {
+						mergedList[key] = data;
+					} else {
+						mergedList[key] = $.extend(mergedList[key], data);
+					}
+				}
+
+				return mergedList;
 			}
 		}
 
