@@ -286,7 +286,7 @@
 				return $.get('https://' + endpoint + '/v1/' + api, params);
 			}
 
-			static getSubAccounts() {
+			static async getSubAccounts() {
 				return PoolAPI.get(PoolAPI.defaultEndpoint, 'account/sub-account/morelist').then((result)=>{
 					if (typeof(result) != 'object') {
 						throw "获取子账户列表失败，结果不是对象：" + JSON.stringify(result);
@@ -327,7 +327,7 @@
 				});
 			}
 
-			static _getHashRate(account, beginTimeStamp, days) {
+			static async _getHashRate(account, beginTimeStamp, days) {
 				var params = {
 					puid: account.puid,
 					dimension: '1d',
