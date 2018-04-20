@@ -165,8 +165,8 @@
 					<Panel header="请输入您从BTCPool获取的币看监控密钥">
 						<HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
 						<Grid>
-							<Col sm={8}><Input type="password" placeholder="币看监控密钥" onChange={this.handleAccessKeyChange} /></Col>
-							<Col sm={2}><Button onClick={this.handleClickNextStep}>下一步</Button></Col>
+							<Col sm={12} md={8}><Input type="password" placeholder="币看监控密钥" onChange={this.handleAccessKeyChange} /></Col>
+							<Col sm={12} md={4}><Button onClick={this.handleClickNextStep}>下一步</Button></Col>
 						</Grid>
 						<p>导出工具需要获得您的授权才能导出您在BTCPool的算力数据，而给予授权最简单的方式就是提供“币看监控密钥”。</p>
 						<p>您可以<a href="https://pool.btc.com/dashboard">登录BTCPool</a>，点击右上角的“设置”按钮，然后选择“共享数据”，再点击“获取币看监控密钥”，最后，将其中的“AccessKey”粘贴到上方的输入框即可。</p>
@@ -409,11 +409,11 @@
 					<Panel header="请选择您要导出的币种、子账户及导出的时间段">
 						<HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
 						<Grid>
-							<Col sm={2}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.coinTypeChanged} /></Col>
-							<Col sm={2}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></Col>
-							<Col sm={2}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></Col>
-							<Col sm={2}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></Col>
-							<Col sm={2}><Button onClick={this.handleClickExport}>导出</Button></Col>
+							<Col sm={12} md={6} lg={2}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.coinTypeChanged} /></Col>
+							<Col sm={12} md={6} lg={2}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></Col>
+							<Col sm={12} md={6} lg={3}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></Col>
+							<Col sm={12} md={6} lg={3}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></Col>
+							<Col sm={12} md={12} lg={2}><Button onClick={this.handleClickExport}>导出</Button></Col>
 						</Grid>
 						<HidableProgress now={this.state.progress} label={this.state.progressText} amStyle="success" />
 					</Panel>
