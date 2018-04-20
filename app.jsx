@@ -401,8 +401,10 @@ class ExitPage extends React.Component {
         return (
         <div>
             <MainNavBar active="Exit" />
-            <p>您已退出，您的“币看监控密钥”已从浏览器移除。</p>
-            <p>若想再次使用本工具，请点击导航栏上的“切换用户”按钮。</p>
+            <Panel header="退出成功">
+                <p>您已退出，您的“币看监控密钥”已从浏览器移除。</p>
+                <p>若想再次使用本工具，请点击导航栏上的“切换用户”按钮。</p>
+            </Panel>
         </div>
         );
     }
