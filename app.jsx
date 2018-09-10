@@ -178,6 +178,8 @@ class SelectSubAccount extends React.Component {
         // 进度条数据
         progress: 0,
         progressText: '',
+        // 导出为单个表格
+        singleTable: true,
     }
     
     constructor(props) {
@@ -292,6 +294,12 @@ class SelectSubAccount extends React.Component {
         });
     }
 
+    singleTableChanged() {
+        this.setState({
+            singleTable: !this.state.singleTable
+        });
+    }
+
     async handleClickExport() {
         try {
             this.setState({
@@ -304,6 +312,8 @@ class SelectSubAccount extends React.Component {
             var endDate = this.state.endDate;
             var accounts = Object.values(this.state.selectedSubAccounts);
             var accountsNum = accounts.length;
+            var singleTable = this.state.singleTable;
+            var onlyOneTable = accountsNum == 1;
 
             accounts.sort(function(a, b) {
                 return (a.region_name + '.' + a.name).localeCompare(b.region_name + '.' + b.name);
@@ -313,8 +323,13 @@ class SelectSubAccount extends React.Component {
                 throw "请选择一个要导出的子账户";
             }
 
-            if (accountsNum > 1) {
-                var zipName = coinType + '-all-(' + beginDate + ',' + endDate + ')' + '.zip';
+            let fileAccountName = onlyOneTable ? (accounts[0].name) : (accountsNum.toString() + '_users');
+            if (singleTable) {
+                var singleTableContent = ""
+                var csvName = coinType + '-' + fileAccountName + '-(' + beginDate + ',' + endDate + ')' + '.csv';
+            }
+            else {
+                var zipName = coinType + '-' + fileAccountName + '-(' + beginDate + ',' + endDate + ')' + '.zip';
                 var zip = new JSZip();
             }
 
@@ -331,20 +346,25 @@ class SelectSubAccount extends React.Component {
                 console.log(newState);
                 this.setState(newState);
 
-                let content = await PoolAPI.makeHashrateEarnCSV(account, beginDate, endDate);
+                let skipHeader = singleTable && i != 0
+                let content = await PoolAPI.makeHashrateEarnCSV(account, beginDate, endDate, skipHeader, singleTable);
 
-                let blob = new Blob([content], {type: "text/comma-separated-values;charset=utf-8"});
-
-                if (accountsNum > 1) {
+                if (singleTable) {
+                    // 合并到单个文件
+                    singleTableContent += content
+                }
+                else {
                     // 多个文件，加入压缩包
+                    let blob = new Blob([content], {type: "text/comma-separated-values;charset=utf-8"});
                     zip.file(fileName, blob);
-                } else {
-                    // 单个文件直接下载
-                    saveAs(blob, fileName);
                 }
             }
 
-            if (accountsNum > 1) {
+            if (singleTable) {
+                let blob = new Blob([singleTableContent], {type: "text/comma-separated-values;charset=utf-8"});
+                saveAs(blob, csvName);
+            }
+            else {
                 let newState = {
                     progress: 100,
                     progressText: '(' + accountsNum + '/' + accountsNum + ') 生成压缩包',
@@ -385,9 +405,10 @@ class SelectSubAccount extends React.Component {
                 <Grid>
                     <Col sm={12} md={6} lg={2}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.coinTypeChanged} /></Col>
                     <Col sm={12} md={6} lg={2}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></Col>
-                    <Col sm={12} md={6} lg={3}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></Col>
-                    <Col sm={12} md={6} lg={3}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></Col>
-                    <Col sm={12} md={12} lg={2}><Button onClick={this.handleClickExport}>导出</Button></Col>
+                    <Col sm={12} md={6} lg={2}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></Col>
+                    <Col sm={12} md={6} lg={2}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></Col>
+                    <Col sm={12} md={6} lg={2}><Input type="checkbox" label="导出为单个表格" checked={this.state.singleTable} onChange={this.singleTableChanged} inline /></Col>
+                    <Col sm={12} md={6} lg={2}><Button onClick={this.handleClickExport}>导出</Button></Col>
                 </Grid>
                 <HidableProgress now={this.state.progress} label={this.state.progressText} amStyle="success" />
             </Panel>
@@ -697,11 +718,12 @@ class PoolAPI {
         return mergedList;
     }
 
-    static async makeHashrateEarnCSV(account, beginDate, endDate) {
+    static async makeHashrateEarnCSV(account, beginDate, endDate, skipHeader, showAccountName) {
         var list = await PoolAPI.getHashRateAndEarnList(account, beginDate, endDate);
 
         // 没有BOM会导致某些软件打开CSV乱码
         const unicodeBOM = "\uFEFF";
+        const headerFieldAccountName = "子账户名";
         const headerFields = [
             "日期",
             "算力",
@@ -713,7 +735,14 @@ class PoolAPI {
             "备注"
         ];
 
-        var csv = unicodeBOM + headerFields.join(',') + "\n";
+        var csv = "";
+        if (!skipHeader) {
+            csv += unicodeBOM;
+            if (showAccountName) {
+                csv += headerFieldAccountName + ",";
+            }
+            csv += headerFields.join(',') + "\n";
+        }
 
         for (var i in list) {
             var d = list[i];
@@ -734,6 +763,9 @@ class PoolAPI {
                 d.unpaid_reason,
             ];
 
+            if (showAccountName) {
+                csv += account.name + ",";
+            }
             csv += fields.join(',') + "\n";
         }
 
