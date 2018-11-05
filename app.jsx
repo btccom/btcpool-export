@@ -704,8 +704,18 @@ class PoolAPI {
             
             if (mergedList[key] == undefined) {
                 mergedList[key] = data;
-            } else {
+                mergedList[key].paymentNum = 1;
+            }
+            else if (mergedList[key].paid_amount == undefined) {
                 mergedList[key] = $.extend(mergedList[key], data);
+                mergedList[key].paymentNum = 1;
+            }
+            else {
+                mergedList[key].paymentNum++;
+                mergedList[key].paid_amount   += data.paid_amount;
+                mergedList[key].payment_tx    += ' (第' + mergedList[key].paymentNum + '笔)' + data.payment_tx;
+                mergedList[key].address       += ' (第' + mergedList[key].paymentNum + '笔)' + data.address;
+                mergedList[key].unpaid_reason += ' (第' + mergedList[key].paymentNum + '笔)' + data.unpaid_reason;
             }
         }
 
