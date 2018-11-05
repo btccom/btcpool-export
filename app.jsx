@@ -649,8 +649,8 @@ class PoolAPI {
                 // 符合时间范围，加入到结果中
                 fullList.push({
                     date: moment(record.date, 'YYYYMMDD').format('YYYY-MM-DD'),
-                    earn: record.earnings,
-                    paid_amount: record.paid_amount,
+                    earn: parseFloat(record.earnings),
+                    paid_amount: parseFloat(record.paid_amount),
                     payment_tx: record.payment_tx,
                     address: record.address,
                     unpaid_reason: record.unpaid_reason,
@@ -712,10 +712,16 @@ class PoolAPI {
             }
             else {
                 mergedList[key].paymentNum++;
-                mergedList[key].paid_amount   += data.paid_amount;
-                mergedList[key].payment_tx    += ' (第' + mergedList[key].paymentNum + '笔)' + data.payment_tx;
-                mergedList[key].address       += ' (第' + mergedList[key].paymentNum + '笔)' + data.address;
-                mergedList[key].unpaid_reason += ' (第' + mergedList[key].paymentNum + '笔)' + data.unpaid_reason;
+                mergedList[key].paid_amount += data.paid_amount;
+                if (data.payment_tx != "") {
+                    mergedList[key].payment_tx    += ' (第' + mergedList[key].paymentNum + '笔)' + data.payment_tx;
+                }
+                if (data.address != "") {
+                    mergedList[key].address       += ' (第' + mergedList[key].paymentNum + '笔)' + data.address;
+                }
+                if (data.unpaid_reason != "") {
+                    mergedList[key].unpaid_reason += ' (第' + mergedList[key].paymentNum + '笔)' + data.unpaid_reason;
+                }
             }
         }
 
