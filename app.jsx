@@ -506,7 +506,12 @@ class PoolAPI {
 
             // default_url: "https://cn.pool.btc.com", endpoint: "cn-pool.api.btc.com"
             // default_url: "https://cn-ubtc.pool.btc.com", endpoint: "cn-ubtcpool.api.btc.com"
-            var endpoint = accountData.default_url.replace('https://', '').replace('.pool.', '-pool.api.');
+            var endpoint = accountData.default_url.replace('https://', '');
+            if (endpoint.match(/^[a-zA-Z0-9]+-/) == null) {
+                endpoint = endpoint.replace('.pool.', '-pool.api.');
+            } else {
+                endpoint = endpoint.replace('.pool.', 'pool.api.');
+            }
 
             var account = {
                 puid: accountData.puid,
