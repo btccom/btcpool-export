@@ -22,37 +22,64 @@ function exceptionToString(e) {
 }
 
 class DataStore {
-    static getAccessKey() {
-        var ak = localStorage.getItem("btcpool.accesskey");
-        if (typeof(ak) != "string") {
-            ak = null;
+    static getValue(key) {
+        var value = localStorage.getItem(key);
+        if (typeof(value) != "string") {
+            value = null;
         }
-        return ak;
+        return value;
+    }
+
+    static getAccessKey() {
+        return this.getValue("btcpool.accesskey");
     }
     
     static setAccessKey(ak) {
         if (typeof(ak) != "string") {
-            throw "币看监控密钥必须为字符串";
+            throw "币看监控密钥或观察者链接必须为字符串";
         }
         
         ak = ak.trim()
         
         if (ak.length == 0) {
-            throw "币看监控密钥不能为空";
+            throw "币看监控密钥或观察者链接不能为空";
         }
-        if (ak.length < 20) {
-            throw "币看监控密钥过短，请确认您已输入完整";
+        if (ak.length < 15) {
+            throw "币看监控密钥或观察者链接过短，请确认您已输入完整";
         }
-        
-        localStorage.setItem("btcpool.accesskey", ak.trim());
+
+        var parts = ak.match(/https:\/\/([a-zA-Z0-9_-]+)\.pool\.btc\.com\/.*\baccess_key=([a-zA-Z0-9_-]+)/);
+        if (parts != null) {
+            localStorage.setItem("btcpool.watch_only", "true");
+            localStorage.setItem("btcpool.region", parts[1]);
+            localStorage.setItem("btcpool.accesskey", parts[2]);
+        } else {
+            localStorage.setItem("btcpool.watch_only", ak.match(/^r_/)==null ? "false" : "true");
+            localStorage.setItem("btcpool.region", "false");
+            localStorage.setItem("btcpool.accesskey", ak);
+        }
     }
     
     static hasAccessKey() {
         return this.getAccessKey() != null;
     }
 
+    static isWatchOnly() {
+        return this.getValue("btcpool.watch_only") == "true";
+    }
+
+    static getRegion() {
+        return this.getValue("btcpool.region");
+    }
+
     static clearAccessKey() {
-        localStorage.removeItem("btcpool.accesskey");
+        try {
+            localStorage.removeItem("btcpool.accesskey");
+            localStorage.removeItem("btcpool.region");
+            localStorage.removeItem("btcpool.watch_only");
+        } catch (e) {
+            // ignore exceptions
+        }
     }
 }
 
@@ -139,12 +166,12 @@ class InputAccessKey extends React.Component {
             <Panel header="请输入您从BTCPool获取的币看监控密钥">
                 <HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
                 <Grid>
-                    <Col sm={12} md={8}><Input type="password" placeholder="币看监控密钥" onChange={this.handleAccessKeyChange} /></Col>
+                    <Col sm={12} md={8}><Input type="password" placeholder="币看监控密钥或观察者链接" onChange={this.handleAccessKeyChange} /></Col>
                     <Col sm={12} md={4}><Button onClick={this.handleClickNextStep}>下一步</Button></Col>
                 </Grid>
-                <p>导出工具需要获得您的授权才能导出您在BTCPool的算力数据，而给予授权最简单的方式就是提供“币看监控密钥”。</p>
-                <p>您可以<a href="https://pool.btc.com/dashboard">登录BTCPool</a>，点击右上角的“设置”按钮，然后选择“共享数据”，再点击“获取币看监控密钥”，最后，将其中的“AccessKey”粘贴到上方的输入框即可。</p>
-                <p>注意，请<b>妥善保管</b>您的“币看监控密钥”，<b>不要将其提供给任何不信任的人或网站</b>。获得您的“币看监控密钥”相当于获得了您在矿池的登录状态，可以代替您在矿池进行一系列操作，包括但不限于创建子账户、切换币种等。</p>
+                <p>导出工具需要获得您的授权才能导出您在BTCPool的算力数据，而给予授权最简单的方式就是提供“币看监控密钥”或“观察者链接”。</p>
+                <p>您可以<a href="https://pool.btc.com/dashboard">登录BTCPool</a>，点击右上角的“设置”按钮，然后选择“共享数据”，再点击“获取币看监控密钥”，最后，将其中的“AccessKey”粘贴到上方的输入框即可。您也可以点击“观察者”，新建一个观察者链接并将链接完整的粘贴到此处。</p>
+                <p>注意，请<b>妥善保管</b>您的“币看监控密钥”，<b>不要将其提供给任何不信任的人或网站</b>。获得您的“币看监控密钥”相当于获得了您在矿池的登录状态，可以代替您在矿池进行一系列操作，包括但不限于创建子账户、切换币种等。观察者链接没有这样的风险，不过一次只能导出一个子账户的信息。</p>
             </Panel>
         </div>
         );
@@ -438,7 +465,7 @@ class PoolAPI {
     static ak() {
         var ak = DataStore.getAccessKey();
         if (ak == null) {
-            throw "币看监控密钥为空";
+            throw "币看监控密钥或观察者链接为空";
         }
         return ak;
     }
@@ -452,7 +479,7 @@ class PoolAPI {
     }
 
     static async getSubAccounts() {
-        var result = await PoolAPI.get(PoolAPI.defaultEndpoint, 'account/sub-account/morelist');
+        var result = await PoolAPI.get(PoolAPI.defaultEndpoint, 'account/sub-account/list');
         if (typeof(result) != 'object') {
             throw "获取子账户列表失败，结果不是对象：" + JSON.stringify(result);
         }
@@ -474,20 +501,18 @@ class PoolAPI {
             ...
         */};
 
-        for (var i in result.data.display) {
-            var accountData = result.data.display[i];
+        for (var i in result.data) {
+            var accountData = result.data[i];
 
-            // region_name: "cn", endpoint: "cn-pool.api.btc.com"
-            // region_name: "cn_ubtc", endpoint: "cn-ubtcpool.api.btc.com"
-            var endpoint = accountData.region_name.replace(/_/g, '-');
-            if (endpoint.match(/-/) == null) { endpoint += '-'; }
-            endpoint += PoolAPI.endpointSuffix;
+            // default_url: "https://cn.pool.btc.com", endpoint: "cn-pool.api.btc.com"
+            // default_url: "https://cn-ubtc.pool.btc.com", endpoint: "cn-ubtcpool.api.btc.com"
+            var endpoint = accountData.default_url.replace('https://', '').replace('.pool.', '-pool.api.');
 
             var account = {
                 puid: accountData.puid,
                 name: accountData.name,
                 endpoint: endpoint,
-                region_name: accountData.country_name,
+                region_name: accountData.region_name,
             };
 
             if (list[accountData.coin_type] == undefined) {
