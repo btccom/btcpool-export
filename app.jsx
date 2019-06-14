@@ -459,8 +459,8 @@ class ExitPage extends React.Component {
 }
 
 class PoolAPI {
-    static defaultEndpoint = 'cn-pool.api.btc.com';
-    static endpointSuffix = 'pool.api.btc.com';
+    static defaultEndpoint = 'https://cn-pool.api.btc.com/v1';
+    static endpointSuffix = '/v1';
 
     static ak() {
         var ak = DataStore.getAccessKey();
@@ -475,10 +475,23 @@ class PoolAPI {
             params = {};
         }
         params.access_key = PoolAPI.ak();
-        return $.get('https://' + endpoint + '/v1/' + api, params);
+        return $.get(endpoint + '/' + api, params);
     }
 
     static async getSubAccounts() {
+        var nodeList = await PoolAPI.get(PoolAPI.defaultEndpoint, 'pool/multi-coin-node-list');
+        if (typeof(nodeList) != 'object') {
+            throw "获取API服务器列表失败，结果不是对象：" + JSON.stringify(nodeList);
+        }
+        if (nodeList.err_no != 0) {
+            throw "获取API服务器列表失败：" + JSON.stringify(nodeList.err_msg);
+        }
+        var endpoints = {};
+        for (var i in nodeList.data) {
+            var node = nodeList.data[i];
+            endpoints[node.default_url] = node.rest_api_endpoint;
+        }
+
         var result = await PoolAPI.get(PoolAPI.defaultEndpoint, 'account/sub-account/list');
         if (typeof(result) != 'object') {
             throw "获取子账户列表失败，结果不是对象：" + JSON.stringify(result);
@@ -503,14 +516,17 @@ class PoolAPI {
 
         for (var i in result.data) {
             var accountData = result.data[i];
+            var endpoint = endpoints[accountData.default_url];
 
-            // default_url: "https://cn.pool.btc.com", endpoint: "cn-pool.api.btc.com"
-            // default_url: "https://cn-ubtc.pool.btc.com", endpoint: "cn-ubtcpool.api.btc.com"
-            var endpoint = accountData.default_url.replace('https://', '');
-            if (endpoint.match(/^[a-zA-Z0-9]+-/) == null) {
-                endpoint = endpoint.replace('.pool.', '-pool.api.');
-            } else {
-                endpoint = endpoint.replace('.pool.', 'pool.api.');
+            if (typeof(endpoint) != 'string' || endpoint.length == 0) {
+                // default_url: "https://cn.pool.btc.com", endpoint: "cn-pool.api.btc.com"
+                // default_url: "https://cn-ubtc.pool.btc.com", endpoint: "cn-ubtcpool.api.btc.com"
+                endpoint = accountData.default_url + this.endpointSuffix;
+                if (endpoint.match(/^[a-zA-Z0-9]+-/) == null) {
+                    endpoint = endpoint.replace('.pool.', '-pool.api.');
+                } else {
+                    endpoint = endpoint.replace('.pool.', 'pool.api.');
+                }
             }
 
             var account = {
