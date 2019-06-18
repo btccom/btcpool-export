@@ -15,8 +15,12 @@ var DateTimeInput = AMUIReact.DateTimeInput;
 var Progress = AMUIReact.Progress;
 
 function exceptionToString(e) {
+    console.log(e);
     if (typeof(e) == 'string') {
         return e;
+    }
+    if (e instanceof Error) {
+        return '程序异常：' + e;
     }
     return '未知错误：' + JSON.stringify(e);
 }
@@ -327,7 +331,16 @@ class SelectSubAccount extends React.Component {
         });
     }
 
-    async handleClickExport() {
+    updateProgress(percent, text) {
+        let newState = {
+            progress: percent,
+            progressText: '(' + parseInt(percent) + '%) ' + text,
+        };
+        console.log(newState);
+        this.setState(newState);
+    }
+
+    async handleClickExport(exportWorkers) {
         try {
             this.setState({
                 hasAlert: false,
@@ -341,6 +354,7 @@ class SelectSubAccount extends React.Component {
             var accountsNum = accounts.length;
             var singleTable = this.state.singleTable;
             var onlyOneTable = accountsNum == 1;
+            var percent = 0;
 
             accounts.sort(function(a, b) {
                 return (a.region_name + '.' + a.name).localeCompare(b.region_name + '.' + b.name);
@@ -363,18 +377,19 @@ class SelectSubAccount extends React.Component {
             for (let i in accounts) {
                 let account = accounts[i];
                 let fileName = coinType + '-' + account.name + '-(' + beginDate + ',' + endDate + ')' + '.csv';
-                let pos = parseInt(i) + 1;
+                let partPercent = percent;
 
-                let newState = {
-                    progress: pos / accountsNum * 100,
-                    progressText: '(' + pos + '/' + accountsNum + ') 正在导出子账户 ' + 
-                                    account.name + ' (' + account.region_name + ')',
-                };
-                console.log(newState);
-                this.setState(newState);
+                this.updateProgress(percent, '正在导出子账户 ' + account.name + ' (' + account.region_name + ')');
 
                 let skipHeader = singleTable && i != 0
-                let content = await PoolAPI.makeHashrateEarnCSV(account, beginDate, endDate, skipHeader, singleTable);
+                let exportFunction = exportWorkers ? PoolAPI.makeWorkerHashrateCSV : PoolAPI.makeHashrateEarnCSV;
+                let content = await exportFunction(account, beginDate, endDate, skipHeader, singleTable, (newPercent, text) => {
+                    // 更新进度，其中 newPercent 是单个子账户的完成进度
+                    // 缩放为所有子账户的完成进度
+                    partPercent += newPercent / accountsNum;
+                    text += ' ' + account.name + ' (' + account.region_name + ')';
+                    this.updateProgress(partPercent, text);
+                });
 
                 if (singleTable) {
                     // 合并到单个文件
@@ -385,30 +400,24 @@ class SelectSubAccount extends React.Component {
                     let blob = new Blob([content], {type: "text/comma-separated-values;charset=utf-8"});
                     zip.file(fileName, blob);
                 }
+
+                percent += 100 / accountsNum;
             }
+
+            percent = 100;
 
             if (singleTable) {
                 let blob = new Blob([singleTableContent], {type: "text/comma-separated-values;charset=utf-8"});
                 saveAs(blob, csvName);
             }
             else {
-                let newState = {
-                    progress: 100,
-                    progressText: '(' + accountsNum + '/' + accountsNum + ') 生成压缩包',
-                };
-                console.log(newState);
-                this.setState(newState);
+                this.updateProgress(percent, '生成压缩包');
 
                 let content = await zip.generateAsync({type:"blob"});
                 saveAs(content, zipName);
             }
 
-            let newState = {
-                    progress: 100,
-                    progressText: '(' + accountsNum + '/' + accountsNum + ') 导出完成',
-            };
-            console.log(newState);
-            this.setState(newState);
+            this.updateProgress(percent, '导出完成');
             
         } catch (e) {
             this.setState({
@@ -424,19 +433,26 @@ class SelectSubAccount extends React.Component {
             format: 'YYYY-MM-DD',
         };
 
+        var style = {
+            display: 'inline-block',
+            maxWidth: '200px',
+            margin: '10px',
+        };
+
         return (
         <div>
             <MainNavBar active="SelectSubAccount" />
             <Panel header="请选择您要导出的币种、子账户及导出的时间段">
                 <HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
-                <Grid>
-                    <Col sm={12} md={6} lg={2}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.coinTypeChanged} /></Col>
-                    <Col sm={12} md={6} lg={2}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></Col>
-                    <Col sm={12} md={6} lg={2}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></Col>
-                    <Col sm={12} md={6} lg={2}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></Col>
-                    <Col sm={12} md={6} lg={2}><Input type="checkbox" label="导出为单个表格" checked={this.state.singleTable} onChange={this.singleTableChanged} inline /></Col>
-                    <Col sm={12} md={6} lg={2}><Button onClick={this.handleClickExport}>导出</Button></Col>
-                </Grid>
+                <div>
+                    <div style={style}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.coinTypeChanged} /></div>
+                    <div style={style}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></div>
+                    <div style={style}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></div>
+                    <div style={style}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></div>
+                    <div style={style}><Input type="checkbox" label="导出为单个表格" checked={this.state.singleTable} onChange={this.singleTableChanged} inline /></div>
+                    <div style={style}><Button onClick={()=>this.handleClickExport(false)}>导出子账户日算力/收益</Button></div>
+                    <div style={style}><Button onClick={()=>this.handleClickExport(true)}>导出矿机日算力</Button></div>
+                </div>
                 <HidableProgress now={this.state.progress} label={this.state.progressText} amStyle="success" />
             </Panel>
         </div>
@@ -594,7 +610,7 @@ class PoolAPI {
         return list;
     }
 
-    static async getHashRate(account, beginDate, endDate) {
+    static async getHashRate(account, beginDate, endDate, addPartPercent) {
         const maxPageSize = 720; //最大分页大小
 
         var beginTimeStamp = new Date(beginDate).getTime() / 1000;
@@ -610,23 +626,27 @@ class PoolAPI {
 
         // 起始时间和结束时间为同一天时得到0,所以+1
         days += 1;
+        var fullList = [];
         
         if (days < maxPageSize) {
-            return this._getHashRate(account, beginTimeStamp, days);
+            addPartPercent(0, '获取算力列表 (0/1)');
+            fullList = this._getHashRate(account, beginTimeStamp, days);
+            addPartPercent(100, '获取算力列表 (1/1)');
         } else {
             var maxPageTime = maxPageSize * 24 * 3600;
-            var fullList = [];
+            var pages = Math.max((endTimeStamp - beginTimeStamp) / maxPageTime, 1);
 
-            for (var t=beginTimeStamp; t<=endTimeStamp; t+=maxPageTime) {
+            addPartPercent(0, '获取算力列表 (0/'+pages+')');
+            for (var t=beginTimeStamp, i=1; t<=endTimeStamp; t+=maxPageTime, i++) {
                 days = (endTimeStamp - t) / 24 / 3600 + 1;
                 days = Math.min(maxPageSize, days);
-
                 var result = await this._getHashRate(account, t, days);
                 fullList = $.extend(fullList, result);
-            }
 
-            return fullList;
+                addPartPercent(100 / pages, '获取算力列表 ('+i+'/'+pages+')');
+            }
         }
+        return fullList;
     }
 
     static async _getEarnList(account, page) {
@@ -649,7 +669,7 @@ class PoolAPI {
         return result.data.list;
     }
 
-    static async getEarnList(account, beginDate, endDate) {
+    static async getEarnList(account, beginDate, endDate, addPartPercent) {
         var beginTimeStamp = moment(beginDate).toDate().getTime();
         var endTimeStamp = moment(endDate).toDate().getTime();
 
@@ -665,14 +685,21 @@ class PoolAPI {
             ...
         */];
 
+        var days = (new Date().getTime() - beginTimeStamp) / 1000 / 3600 / 24;
+        var pages = Math.max(Math.ceil(days / 50), 1);
+        addPartPercent(0, '获取收益列表 (0/'+pages+')');
+
         var minTime = endTimeStamp;
         for (var p=1; minTime >= beginTimeStamp; p++) {
 
             // 整个partList是按照从最新到最老（时间逆序）排列的
             var partList = await PoolAPI._getEarnList(account, p);
+
             if (typeof(partList) != 'object' || partList.length == undefined || partList.length < 1) {
+                addPartPercent(100 * (pages - p + 1) / pages, '获取收益列表 ('+pages+'/'+pages+')');
                 break;
             }
+            addPartPercent(100 / pages, '获取收益列表 ('+p+'/'+pages+')');
 
             for (var i in partList) {
                 var record = partList[i];
@@ -707,10 +734,14 @@ class PoolAPI {
         return fullList;
     }
 
-    static async getHashRateAndEarnList(account, beginDate, endDate) {
+    static async getHashRateAndEarnList(account, beginDate, endDate, updateProgress) {
+        var addPartPercent = (increasedPercent, text) => {
+            updateProgress(increasedPercent / 2, text);
+        };
+
         var [hashrateList, earnList] = await Promise.all([
-            PoolAPI.getHashRate(account, beginDate, endDate),
-            PoolAPI.getEarnList(account, beginDate, endDate)
+            PoolAPI.getHashRate(account, beginDate, endDate, addPartPercent),
+            PoolAPI.getEarnList(account, beginDate, endDate, addPartPercent)
         ]);
 
         var mergedList = {/*
@@ -780,8 +811,8 @@ class PoolAPI {
         return mergedList;
     }
 
-    static async makeHashrateEarnCSV(account, beginDate, endDate, skipHeader, showAccountName) {
-        var list = await PoolAPI.getHashRateAndEarnList(account, beginDate, endDate);
+    static async makeHashrateEarnCSV(account, beginDate, endDate, skipHeader, showAccountName, updateProgress) {
+        var list = await PoolAPI.getHashRateAndEarnList(account, beginDate, endDate, updateProgress);
 
         // 没有BOM会导致某些软件打开CSV乱码
         const unicodeBOM = "\uFEFF";
@@ -825,6 +856,62 @@ class PoolAPI {
                 d.unpaid_reason,
             ];
 
+            if (showAccountName) {
+                csv += account.name + ",";
+            }
+            csv += fields.join(',') + "\n";
+        }
+
+        return csv;
+    }
+
+    static async getWorkerHashRateList(account, beginTimeStamp, endTimeStamp) {
+        beginTimeStamp /= 1000;
+        endTimeStamp /= 1000;
+
+        var mergedList = [/*
+            ['worker1', '10.4T', '0.05%', '10.6T', '0.04%', ...],
+            ['worker2', '13.1T', '0.03%', '13.8T', '0.02%', ...],
+            ...
+        */];
+
+        return mergedList;
+    }
+
+    static async makeWorkerHashrateCSV(account, beginDate, endDate, skipHeader, showAccountName) {
+        var beginTimeStamp = moment(beginDate).toDate().getTime();
+        var endTimeStamp = moment(endDate).toDate().getTime();
+
+        if (endTimeStamp < beginTimeStamp) {
+            var t = endTimeStamp;
+            endTimeStamp = beginTimeStamp;
+            beginTimeStamp = t;
+        }
+
+        var list = await PoolAPI.getWorkerHashRateList(account, beginTimeStamp, endTimeStamp);
+
+        // 没有BOM会导致某些软件打开CSV乱码
+        const unicodeBOM = "\uFEFF";
+        const headerFieldAccountName = "子账户名";
+        var headerFields = [
+            "矿机名",
+        ];
+        for (let t=beginTimeStamp; t<=endTimeStamp; t+=3600*24*1000) {
+            headerFields.push(moment(t).format('YYYY-MM-DD'));
+            headerFields.push('拒绝率');
+        }
+
+        var csv = "";
+        if (!skipHeader) {
+            csv += unicodeBOM;
+            if (showAccountName) {
+                csv += headerFieldAccountName + ",";
+            }
+            csv += headerFields.join(',') + "\n";
+        }
+
+        for (var i in list) {
+            var fields = list[i];
             if (showAccountName) {
                 csv += account.name + ",";
             }
