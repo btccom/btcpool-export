@@ -96,7 +96,7 @@ var HidableAlert = function(props) {
 }
 
 var HidableProgress = function(props) {
-    return props.now > 0 ? (
+    return props.now > 0 || props.label != '' ? (
         <Panel header={props.label}>
             <Progress striped amStyle={props.amStyle} now={props.now} />
         </Panel>
@@ -630,14 +630,14 @@ class PoolAPI {
         var fullList = [];
         
         if (days < maxPageSize) {
-            addPartPercent(0, '获取算力列表 (0/1)');
+            addPartPercent(0, '获取算力列表...');
             fullList = this._getHashRate(account, beginTimeStamp, days);
             addPartPercent(100, '获取算力列表 (1/1)');
         } else {
             var maxPageTime = maxPageSize * 24 * 3600;
-            var pages = Math.max((endTimeStamp - beginTimeStamp) / maxPageTime, 1);
+            var pages = Math.ceil((endTimeStamp - beginTimeStamp) / maxPageTime);
 
-            addPartPercent(0, '获取算力列表 (0/'+pages+')');
+            addPartPercent(0, '获取算力列表...');
             for (var t=beginTimeStamp, i=1; t<=endTimeStamp; t+=maxPageTime, i++) {
                 days = (endTimeStamp - t) / 24 / 3600 + 1;
                 days = Math.min(maxPageSize, days);
@@ -687,8 +687,8 @@ class PoolAPI {
         */];
 
         var days = (new Date().getTime() - beginTimeStamp) / 1000 / 3600 / 24;
-        var pages = Math.max(Math.ceil(days / 50), 1);
-        addPartPercent(0, '获取收益列表 (0/'+pages+')');
+        var pages = Math.ceil(days / 50);
+        addPartPercent(0, '获取收益列表...');
 
         var minTime = endTimeStamp;
         for (var p=1; minTime >= beginTimeStamp; p++) {
@@ -866,9 +866,51 @@ class PoolAPI {
         return csv;
     }
 
-    static async getWorkerHashRateList(account, beginTimeStamp, endTimeStamp) {
+    static async _getWorkers(account, page) {
+        var params = {
+            group: 0,
+            page: page,
+            page_size: 1000,
+            status: 'all',
+            puid: account.puid,
+        };
+
+        var result = await PoolAPI.get(account.endpoint, 'worker', params);
+
+        if (typeof(result) != 'object') {
+            throw "获取矿机列表失败，结果不是对象：" + JSON.stringify(result);
+        }
+        if (result.err_no != 0) {
+            throw "获取矿机列表失败：" + JSON.stringify(result.err_msg);
+        }
+
+        return result.data;
+    }
+
+    static async _getWorkerHashrates(account, workerId, beginTimeStamp, count) {
+        var params = {
+            dimension: '1d',
+            start_ts: beginTimeStamp,
+            count: count,
+            puid: account.puid,
+        };
+
+        var result = await PoolAPI.get(account.endpoint, 'worker/'+workerId+'/share-history', params);
+
+        if (typeof(result) != 'object') {
+            throw "获取矿机算力失败，结果不是对象：" + JSON.stringify(result);
+        }
+        if (result.err_no != 0) {
+            throw "获取矿机算力失败：" + JSON.stringify(result.err_msg);
+        }
+
+        return result.data;
+    }
+
+    static async getWorkerHashRateList(account, beginTimeStamp, endTimeStamp, updateProgress) {
         beginTimeStamp /= 1000;
         endTimeStamp /= 1000;
+        var days = (endTimeStamp - beginTimeStamp) / 3600 / 24 + 1;
 
         var mergedList = [/*
             ['worker1', '10.4T', '0.05%', '10.6T', '0.04%', ...],
@@ -876,10 +918,60 @@ class PoolAPI {
             ...
         */];
 
+        updateProgress(0, '获取矿机列表...');
+        var result = await PoolAPI._getWorkers(account, 1);
+        var count = result.total_count;
+        var pages = Math.ceil(count / 1000);
+        var workers = result.data;
+        
+        updateProgress(10 / pages, '获取矿机列表 (1/'+pages+')');
+
+        for (let p=2; p<=pages; p++) {
+            var result = await PoolAPI._getWorkers(account, p);
+            workers = workers.concat(result.data);
+            updateProgress(10 / pages, '获取矿机列表 ('+p+'/'+pages+')');
+        }
+
+        var promisePool = [];
+        for (let i in workers) {
+            let workerIndex = parseInt(i) + 1;
+            let worker = workers[i];
+            let request = PoolAPI._getWorkerHashrates(account, worker.worker_id, beginTimeStamp, days);
+            request.worker_name = worker.worker_name;
+            promisePool.push(request);
+
+            if (promisePool.length >= 10 || workerIndex == workers.length) {
+                updateProgress(90 * promisePool.length / count, '获取矿机算力 ('+workerIndex+'/'+count+')');
+                var results = await Promise.all(promisePool);
+                
+                for (let k in results) {
+                    let hashrates = results[k];
+                    let workerName = promisePool[k].worker_name;
+                    let unit = hashrates.shares_unit;
+                    let line = [workerName];
+
+                    for (let j in hashrates.tickers) {
+                        line.push(hashrates.tickers[j][1] + unit);
+                        line.push((hashrates.tickers[j][2] * 100).toFixed(2) + '%');
+                    }
+                    mergedList.push(line);
+                }
+
+                promisePool = [];
+            }
+        }
+
+        // 按矿机名进行排序
+        mergedList.sort((a, b) => {
+            // 11x22 -> 011x022
+            let regular = s => s.toLowerCase().split('x').map(x => x.padStart(3, '0')).join('x');
+            return regular(a[0]) > regular(b[0]);
+        });
+
         return mergedList;
     }
 
-    static async makeWorkerHashrateCSV(account, beginDate, endDate, skipHeader, showAccountName) {
+    static async makeWorkerHashrateCSV(account, beginDate, endDate, skipHeader, showAccountName, updateProgress) {
         var beginTimeStamp = moment(beginDate).toDate().getTime();
         var endTimeStamp = moment(endDate).toDate().getTime();
 
@@ -889,7 +981,7 @@ class PoolAPI {
             beginTimeStamp = t;
         }
 
-        var list = await PoolAPI.getWorkerHashRateList(account, beginTimeStamp, endTimeStamp);
+        var list = await PoolAPI.getWorkerHashRateList(account, beginTimeStamp, endTimeStamp, updateProgress);
 
         // 没有BOM会导致某些软件打开CSV乱码
         const unicodeBOM = "\uFEFF";
