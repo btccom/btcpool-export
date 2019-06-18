@@ -200,9 +200,9 @@ class SelectSubAccount extends React.Component {
         // 选中的子账户（从currentSubAccountIndex中查找）
         selectedSubAccounts: [],
         //开始时间
-        beginDate: moment().subtract(7, 'days').format('YYYY-MM-DD'),
+        beginDate: moment.utc().subtract(7, 'days').format('YYYY-MM-DD'),
         //结束时间
-        endDate: moment().format('YYYY-MM-DD'),
+        endDate: moment.utc().format('YYYY-MM-DD'),
         // 警告框数据
         hasAlert: false,
         alertText: '',
@@ -595,7 +595,7 @@ class PoolAPI {
             }
 
             list.push({
-                date: moment(data[0]*1000).format('YYYY-MM-DD'),
+                date: moment.utc(data[0]*1000).format('YYYY-MM-DD'),
                 hashrate: data[1] + unit,
                 reject_rate: (data[2] * 100).toString().substr(0, 6) + '%'
             });
@@ -614,8 +614,8 @@ class PoolAPI {
     static async getHashRate(account, beginDate, endDate, addPartPercent) {
         const maxPageSize = 720; //最大分页大小
 
-        var beginTimeStamp = new Date(beginDate).getTime() / 1000;
-        var endTimeStamp = new Date(endDate).getTime() / 1000;
+        var beginTimeStamp = moment.utc(beginDate).valueOf() / 1000;
+        var endTimeStamp = moment.utc(endDate).valueOf() / 1000;
         var days = (endTimeStamp - beginTimeStamp) / 3600 / 24;
 
         if (days < 0) {
@@ -671,8 +671,8 @@ class PoolAPI {
     }
 
     static async getEarnList(account, beginDate, endDate, addPartPercent) {
-        var beginTimeStamp = moment(beginDate).toDate().getTime();
-        var endTimeStamp = moment(endDate).toDate().getTime();
+        var beginTimeStamp = moment.utc(beginDate).valueOf();
+        var endTimeStamp = moment.utc(endDate).valueOf();
 
         if (endTimeStamp < beginTimeStamp) {
             var t = endTimeStamp;
@@ -686,7 +686,7 @@ class PoolAPI {
             ...
         */];
 
-        var days = (new Date().getTime() - beginTimeStamp) / 1000 / 3600 / 24;
+        var days = (moment.utc().valueOf() - beginTimeStamp) / 1000 / 3600 / 24;
         var pages = Math.ceil(days / 50);
         addPartPercent(0, '获取收益列表...');
 
@@ -704,7 +704,7 @@ class PoolAPI {
 
             for (var i in partList) {
                 var record = partList[i];
-                var time = moment(record.date, 'YYYYMMDD').toDate().getTime();
+                var time = moment.utc(record.date, 'YYYYMMDD').valueOf();
                 
                 // 新于结束时间
                 if (time > endTimeStamp) {
@@ -722,7 +722,7 @@ class PoolAPI {
 
                 // 符合时间范围，加入到结果中
                 fullList.push({
-                    date: moment(record.date, 'YYYYMMDD').format('YYYY-MM-DD'),
+                    date: moment.utc(record.date, 'YYYYMMDD').format('YYYY-MM-DD'),
                     earn: parseFloat(record.earnings),
                     paid_amount: parseFloat(record.paid_amount),
                     payment_tx: record.payment_tx,
@@ -972,8 +972,8 @@ class PoolAPI {
     }
 
     static async makeWorkerHashrateCSV(account, beginDate, endDate, skipHeader, showAccountName, updateProgress) {
-        var beginTimeStamp = moment(beginDate).toDate().getTime();
-        var endTimeStamp = moment(endDate).toDate().getTime();
+        var beginTimeStamp = moment.utc(beginDate).valueOf();
+        var endTimeStamp = moment.utc(endDate).valueOf();
 
         if (endTimeStamp < beginTimeStamp) {
             var t = endTimeStamp;
@@ -990,7 +990,7 @@ class PoolAPI {
             "矿机名",
         ];
         for (let t=beginTimeStamp; t<=endTimeStamp; t+=3600*24*1000) {
-            headerFields.push(moment(t).format('YYYY-MM-DD'));
+            headerFields.push(moment.utc(t).format('YYYY-MM-DD'));
             headerFields.push('拒绝率');
         }
 
