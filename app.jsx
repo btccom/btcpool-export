@@ -259,10 +259,11 @@ class SelectSubAccount extends React.Component {
             for (var i in this.subAccountData[coinType]) {
                 var account = this.subAccountData[coinType][i];
                 this.currentSubAccountIndex[account.puid.toString()] = account;
+                let label = account.name + ' (' + account.region_name + ')';
                 newSubAccountList.push({
                     value: account.puid.toString(),
-                    label: account.name + ' (' + account.region_name + ')',
-                    sortby: account.region_name + '.' + account.name,
+                    label: label,
+                    sortby: label,
                 });
             }
 
