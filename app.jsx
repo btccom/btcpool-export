@@ -454,6 +454,11 @@ class SelectSubAccount extends React.Component {
                     <div style={style}><Button onClick={()=>this.handleClickExport(false)}>导出子账户日算力/收益</Button></div>
                     <div style={style}><Button onClick={()=>this.handleClickExport(true)}>导出矿机日算力</Button></div>
                 </div>
+                <p>
+                    请注意，导出结果中的日期采用UTC时区，相当于北京时间8点到次日8点。
+                    若您的时区与UTC时区不同，则您在特定时段（比如北京时间0点到8点）访问矿池网页时，看到的日期可能会与导出结果相差一天。
+                    这是矿池页面的显示缺陷所致，原因是矿池页面使用本地时区进行日期格式化，并且您的时区已经进入第二天，但UTC时区尚未进入第二天。
+                </p>
                 <HidableProgress now={this.state.progress} label={this.state.progressText} amStyle="success" />
             </Panel>
         </div>
