@@ -969,7 +969,7 @@ class PoolAPI {
         // 按矿机名进行排序
         mergedList.sort((a, b) => {
             // 11x22 -> 011x022
-            let regular = s => s.toLowerCase().split('x').map(x => x.padStart(3, '0')).join('x');
+            let regular = s => (s || '').toLowerCase().split('x').map(x => x.padStart(3, '0')).join('x');
             return regular(a[0]) > regular(b[0]);
         });
 
