@@ -16,7 +16,7 @@ var Progress = AMUIReact.Progress;
 
 function exceptionToString(e) {
     console.log(e);
-    if (typeof(e) == 'string') {
+    if (typeof (e) == 'string') {
         return e;
     }
     if (e instanceof Error) {
@@ -28,7 +28,7 @@ function exceptionToString(e) {
 class DataStore {
     static getValue(key) {
         var value = localStorage.getItem(key);
-        if (typeof(value) != "string") {
+        if (typeof (value) != "string") {
             value = null;
         }
         return value;
@@ -37,14 +37,14 @@ class DataStore {
     static getAccessKey() {
         return this.getValue("btcpool.accesskey");
     }
-    
+
     static setAccessKey(ak) {
-        if (typeof(ak) != "string") {
+        if (typeof (ak) != "string") {
             throw "币看监控密钥或观察者链接必须为字符串";
         }
-        
+
         ak = ak.trim()
-        
+
         if (ak.length == 0) {
             throw "币看监控密钥或观察者链接不能为空";
         }
@@ -58,12 +58,12 @@ class DataStore {
             localStorage.setItem("btcpool.region", parts[1]);
             localStorage.setItem("btcpool.accesskey", parts[2]);
         } else {
-            localStorage.setItem("btcpool.watch_only", ak.match(/^r_/)==null ? "false" : "true");
+            localStorage.setItem("btcpool.watch_only", ak.match(/^r_/) == null ? "false" : "true");
             localStorage.setItem("btcpool.region", "false");
             localStorage.setItem("btcpool.accesskey", ak);
         }
     }
-    
+
     static hasAccessKey() {
         return this.getAccessKey() != null;
     }
@@ -74,6 +74,10 @@ class DataStore {
 
     static getRegion() {
         return this.getValue("btcpool.region");
+    }
+
+    static getEndpoint() {
+        return 'https://' + this.getValue("btcpool.region") + '.pool.btc.com';
     }
 
     static clearAccessKey() {
@@ -87,7 +91,7 @@ class DataStore {
     }
 }
 
-var HidableAlert = function(props) {
+var HidableAlert = function (props) {
     return props.visible ? (
         <Alert amStyle={props.amStyle}>
             <p>{props.alertText}</p>
@@ -95,7 +99,7 @@ var HidableAlert = function(props) {
     ) : null;
 }
 
-var HidableProgress = function(props) {
+var HidableProgress = function (props) {
     return props.now > 0 || props.label != '' ? (
         <Panel header={props.label}>
             <Progress striped amStyle={props.amStyle} now={props.now} />
@@ -104,20 +108,20 @@ var HidableProgress = function(props) {
 }
 
 function MainNavBar(props) {
-    var handleSelectSubAccount = function(props) {
-        if (props.active=="SelectSubAccount") {
+    var handleSelectSubAccount = function (props) {
+        if (props.active == "SelectSubAccount") {
             return false;
         }
         MainWindow.init();
     }
-    var handleSwitchUser = function(props) {
-        if (props.active=="SwitchUser") {
+    var handleSwitchUser = function (props) {
+        if (props.active == "SwitchUser") {
             return false;
         }
         MainWindow.switchUser();
     }
-    var handleExit = function(props) {
-        if (props.active=="Exit") {
+    var handleExit = function (props) {
+        if (props.active == "Exit") {
             return false;
         }
         MainWindow.exit();
@@ -126,11 +130,11 @@ function MainNavBar(props) {
     return (
         <Topbar brand="BTCPool算力导出工具" toggleNavKey="nav">
             <CollapsibleNav eventKey="nav">
-            <Nav topbar>
-                <NavItem active={props.active=="SwitchUser"} onClick={(props)=>handleSwitchUser(props)} href="#">切换用户</NavItem>
-                <NavItem active={props.active=="SelectSubAccount"} onClick={(props)=>handleSelectSubAccount(props)} href="#">选择子账户</NavItem>
-                <NavItem active={props.active=="Exit"} onClick={(props)=>handleExit(props)} href="#">退出</NavItem>
-            </Nav>
+                <Nav topbar>
+                    <NavItem active={props.active == "SwitchUser"} onClick={(props) => handleSwitchUser(props)} href="#">切换用户</NavItem>
+                    <NavItem active={props.active == "SelectSubAccount"} onClick={(props) => handleSelectSubAccount(props)} href="#">选择子账户</NavItem>
+                    <NavItem active={props.active == "Exit"} onClick={(props) => handleExit(props)} href="#">退出</NavItem>
+                </Nav>
             </CollapsibleNav>
         </Topbar>
     );
@@ -142,16 +146,16 @@ class InputAccessKey extends React.Component {
         hasAlert: false,
         alertText: '',
     }
-    
+
     constructor(props) {
         super(props);
         autoBind(this);
     }
-    
+
     handleAccessKeyChange(e) {
         this.setState({ accessKey: e.target.value });
     }
-    
+
     handleClickNextStep() {
         try {
             MainWindow.saveAccessKey(this.state.accessKey);
@@ -165,19 +169,19 @@ class InputAccessKey extends React.Component {
 
     render() {
         return (
-        <div>
-            <MainNavBar active="SwitchUser" />
-            <Panel header="请输入您从BTCPool获取的币看监控密钥">
-                <HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
-                <Grid>
-                    <Col sm={12} md={8}><Input type="password" placeholder="币看监控密钥或观察者链接" onChange={this.handleAccessKeyChange} /></Col>
-                    <Col sm={12} md={4}><Button onClick={this.handleClickNextStep}>下一步</Button></Col>
-                </Grid>
-                <p>导出工具需要获得您的授权才能导出您在BTCPool的算力数据，而给予授权最简单的方式就是提供“币看监控密钥”或“观察者链接”。</p>
-                <p>您可以<a href="https://pool.btc.com/dashboard">登录BTCPool</a>，点击右上角的“设置”按钮，然后选择“共享数据”，再点击“获取币看监控密钥”，最后，将其中的“AccessKey”粘贴到上方的输入框即可。您也可以点击“观察者”，新建一个观察者链接并将链接完整的粘贴到此处。</p>
-                <p>注意，请<b>妥善保管</b>您的“币看监控密钥”，<b>不要将其提供给任何不信任的人或网站</b>。获得您的“币看监控密钥”相当于获得了您在矿池的登录状态，可以代替您在矿池进行一系列操作，包括但不限于创建子账户、切换币种等。观察者链接没有这样的风险，不过一次只能导出一个子账户的信息。</p>
-            </Panel>
-        </div>
+            <div>
+                <MainNavBar active="SwitchUser" />
+                <Panel header="请输入您从BTCPool获取的币看监控密钥">
+                    <HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
+                    <Grid>
+                        <Col sm={12} md={8}><Input type="password" placeholder="币看监控密钥或观察者链接" onChange={this.handleAccessKeyChange} /></Col>
+                        <Col sm={12} md={4}><Button onClick={this.handleClickNextStep}>下一步</Button></Col>
+                    </Grid>
+                    <p>导出工具需要获得您的授权才能导出您在BTCPool的算力数据，而给予授权最简单的方式就是提供“币看监控密钥”或“观察者链接”。</p>
+                    <p>您可以<a href="https://pool.btc.com/dashboard">登录BTCPool</a>，点击右上角的“设置”按钮，然后选择“共享数据”，再点击“获取币看监控密钥”，最后，将其中的“AccessKey”粘贴到上方的输入框即可。您也可以点击“观察者”，新建一个观察者链接并将链接完整的粘贴到此处。</p>
+                    <p>注意，请<b>妥善保管</b>您的“币看监控密钥”，<b>不要将其提供给任何不信任的人或网站</b>。获得您的“币看监控密钥”相当于获得了您在矿池的登录状态，可以代替您在矿池进行一系列操作，包括但不限于创建子账户、切换币种等。观察者链接没有这样的风险，不过一次只能导出一个子账户的信息。</p>
+                </Panel>
+            </div>
         );
     }
 }
@@ -190,10 +194,10 @@ class SelectSubAccount extends React.Component {
 
     state = {
         coinList: [
-            {value:'', label:'加载中...'}
+            { value: '', label: '加载中...' }
         ],
         subAccountList: [
-            {value:'', label:'请先选择币种'}
+            { value: '', label: '请先选择币种' }
         ],
         // 选中的币种
         selectedCoinType: '',
@@ -212,7 +216,7 @@ class SelectSubAccount extends React.Component {
         // 导出为单个表格
         singleTable: true,
     }
-    
+
     constructor(props) {
         super(props);
         autoBind(this);
@@ -235,7 +239,7 @@ class SelectSubAccount extends React.Component {
         try {
             var newCoinList = [];
             for (var coinType in this.subAccountData) {
-                newCoinList.push({value: coinType, label: coinType});
+                newCoinList.push({ value: coinType, label: coinType });
             }
             this.setState({
                 coinList: newCoinList
@@ -253,7 +257,7 @@ class SelectSubAccount extends React.Component {
         try {
             this.currentSubAccountIndex = {}
             var newSubAccountList = [
-                {value: 'all', label: '全部', sortby: '0'}
+                { value: 'all', label: '全部', sortby: '0' }
             ];
 
             for (var i in this.subAccountData[coinType]) {
@@ -267,7 +271,7 @@ class SelectSubAccount extends React.Component {
                 });
             }
 
-            newSubAccountList.sort(function(a, b) {
+            newSubAccountList.sort(function (a, b) {
                 return a.sortby.localeCompare(b.sortby);
             });
 
@@ -275,7 +279,7 @@ class SelectSubAccount extends React.Component {
                 selectedCoinType: coinType,
                 subAccountList: newSubAccountList
             });
-            
+
         } catch (e) {
             this.setState({
                 hasAlert: true,
@@ -305,7 +309,7 @@ class SelectSubAccount extends React.Component {
             this.setState({
                 selectedSubAccounts: subAccounts
             });
-            
+
         } catch (e) {
             this.setState({
                 hasAlert: true,
@@ -357,7 +361,7 @@ class SelectSubAccount extends React.Component {
             var onlyOneTable = accountsNum == 1;
             var percent = 0;
 
-            accounts.sort(function(a, b) {
+            accounts.sort(function (a, b) {
                 return (a.region_name + '.' + a.name).localeCompare(b.region_name + '.' + b.name);
             });
 
@@ -398,7 +402,7 @@ class SelectSubAccount extends React.Component {
                 }
                 else {
                     // 多个文件，加入压缩包
-                    let blob = new Blob([content], {type: "text/comma-separated-values;charset=utf-8"});
+                    let blob = new Blob([content], { type: "text/comma-separated-values;charset=utf-8" });
                     zip.file(fileName, blob);
                 }
 
@@ -408,18 +412,18 @@ class SelectSubAccount extends React.Component {
             percent = 100;
 
             if (singleTable) {
-                let blob = new Blob([singleTableContent], {type: "text/comma-separated-values;charset=utf-8"});
+                let blob = new Blob([singleTableContent], { type: "text/comma-separated-values;charset=utf-8" });
                 saveAs(blob, csvName);
             }
             else {
                 this.updateProgress(percent, '生成压缩包');
 
-                let content = await zip.generateAsync({type:"blob"});
+                let content = await zip.generateAsync({ type: "blob" });
                 saveAs(content, zipName);
             }
 
             this.updateProgress(percent, '导出完成');
-            
+
         } catch (e) {
             this.setState({
                 hasAlert: true,
@@ -441,27 +445,27 @@ class SelectSubAccount extends React.Component {
         };
 
         return (
-        <div>
-            <MainNavBar active="SelectSubAccount" />
-            <Panel header="请选择您要导出的币种、子账户及导出的时间段">
-                <HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
-                <div>
-                    <div style={style}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.coinTypeChanged} /></div>
-                    <div style={style}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></div>
-                    <div style={style}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></div>
-                    <div style={style}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></div>
-                    <div style={style}><Input type="checkbox" label="导出为单个表格" checked={this.state.singleTable} onChange={this.singleTableChanged} inline /></div>
-                    <div style={style}><Button onClick={()=>this.handleClickExport(false)}>导出子账户日算力/收益</Button></div>
-                    <div style={style}><Button onClick={()=>this.handleClickExport(true)}>导出矿机日算力</Button></div>
-                </div>
-                <p>
-                    请注意，导出结果中的日期采用UTC时区，相当于北京时间8点到次日8点。
-                    若您的时区与UTC时区不同，则您在特定时段（比如北京时间0点到8点）访问矿池网页时，看到的日期可能会与导出结果相差一天。
-                    这是矿池页面的显示缺陷所致，原因是矿池页面使用本地时区进行日期格式化，并且您的时区已经进入第二天，但UTC时区尚未进入第二天。
+            <div>
+                <MainNavBar active="SelectSubAccount" />
+                <Panel header="请选择您要导出的币种、子账户及导出的时间段">
+                    <HidableAlert amStyle="secondary" visible={this.state.hasAlert} alertText={this.state.alertText} />
+                    <div>
+                        <div style={style}><Selected data={this.state.coinList} placeholder="选择币种" onChange={this.coinTypeChanged} /></div>
+                        <div style={style}><Selected data={this.state.subAccountList} placeholder="选择子账户" onChange={this.subAccountChanged} multiple={true} /></div>
+                        <div style={style}><DateTimeInput onSelect={this.beginTimeChanged} dateTime={this.state.beginDate} {...dateProps} /></div>
+                        <div style={style}><DateTimeInput onSelect={this.endTimeChanged} dateTime={this.state.endDate} {...dateProps} /></div>
+                        <div style={style}><Input type="checkbox" label="导出为单个表格" checked={this.state.singleTable} onChange={this.singleTableChanged} inline /></div>
+                        <div style={style}><Button onClick={() => this.handleClickExport(false)}>导出子账户日算力/收益</Button></div>
+                        <div style={style}><Button onClick={() => this.handleClickExport(true)}>导出矿机日算力</Button></div>
+                    </div>
+                    <p>
+                        请注意，导出结果中的日期采用UTC时区，相当于北京时间8点到次日8点。
+                        若您的时区与UTC时区不同，则您在特定时段（比如北京时间0点到8点）访问矿池网页时，看到的日期可能会与导出结果相差一天。
+                        这是矿池页面的显示缺陷所致，原因是矿池页面使用本地时区进行日期格式化，并且您的时区已经进入第二天，但UTC时区尚未进入第二天。
                 </p>
-                <HidableProgress now={this.state.progress} label={this.state.progressText} amStyle="success" />
-            </Panel>
-        </div>
+                    <HidableProgress now={this.state.progress} label={this.state.progressText} amStyle="success" />
+                </Panel>
+            </div>
         );
     }
 }
@@ -469,13 +473,13 @@ class SelectSubAccount extends React.Component {
 class ExitPage extends React.Component {
     render() {
         return (
-        <div>
-            <MainNavBar active="Exit" />
-            <Panel header="退出成功">
-                <p>您已退出，您的“币看监控密钥”已从浏览器移除。</p>
-                <p>若想再次使用本工具，请点击导航栏上的“切换用户”按钮。</p>
-            </Panel>
-        </div>
+            <div>
+                <MainNavBar active="Exit" />
+                <Panel header="退出成功">
+                    <p>您已退出，您的“币看监控密钥”已从浏览器移除。</p>
+                    <p>若想再次使用本工具，请点击导航栏上的“切换用户”按钮。</p>
+                </Panel>
+            </div>
         );
     }
 }
@@ -493,7 +497,7 @@ class PoolAPI {
     }
 
     static get(endpoint, api, params) {
-        if (typeof(params) != 'object') {
+        if (typeof (params) != 'object') {
             params = {};
         }
         params.access_key = PoolAPI.ak();
@@ -501,21 +505,32 @@ class PoolAPI {
     }
 
     static async getSubAccounts() {
-        var nodeList = await PoolAPI.get(PoolAPI.defaultEndpoint, 'pool/multi-coin-node-list');
-        if (typeof(nodeList) != 'object') {
-            throw "获取API服务器列表失败，结果不是对象：" + JSON.stringify(nodeList);
-        }
-        if (nodeList.err_no != 0) {
-            throw "获取API服务器列表失败：" + JSON.stringify(nodeList.err_msg);
-        }
+        var defaultEndpoint = PoolAPI.defaultEndpoint;
         var endpoints = {};
-        for (var i in nodeList.data) {
-            var node = nodeList.data[i];
-            endpoints[node.default_url] = node.rest_api_endpoint;
+
+        if (DataStore.getRegion().match(/dev/i)) {
+            // dev servers
+            defaultEndpoint = DataStore.getEndpoint() + this.endpointSuffix;
+            endpoints[DataStore.getEndpoint()] = defaultEndpoint;
+            console.log('dev endpoint:', defaultEndpoint);
+        } else {
+            // production servers
+            var nodeList = await PoolAPI.get(defaultEndpoint, 'pool/multi-coin-node-list');
+            if (typeof (nodeList) != 'object') {
+                throw "获取API服务器列表失败，结果不是对象：" + JSON.stringify(nodeList);
+            }
+            if (nodeList.err_no != 0) {
+                throw "获取API服务器列表失败：" + JSON.stringify(nodeList.err_msg);
+            }
+            var endpoints = {};
+            for (var i in nodeList.data) {
+                var node = nodeList.data[i];
+                endpoints[node.default_url] = node.rest_api_endpoint;
+            }
         }
 
-        var result = await PoolAPI.get(PoolAPI.defaultEndpoint, 'account/sub-account/list');
-        if (typeof(result) != 'object') {
+        var result = await PoolAPI.get(defaultEndpoint, 'account/sub-account/list');
+        if (typeof (result) != 'object') {
             throw "获取子账户列表失败，结果不是对象：" + JSON.stringify(result);
         }
         if (result.err_no != 0) {
@@ -540,7 +555,7 @@ class PoolAPI {
             var accountData = result.data[i];
             var endpoint = endpoints[accountData.default_url];
 
-            if (typeof(endpoint) != 'string' || endpoint.length == 0) {
+            if (typeof (endpoint) != 'string' || endpoint.length == 0) {
                 // default_url: "https://cn.pool.btc.com", endpoint: "cn-pool.api.btc.com"
                 // default_url: "https://cn-ubtc.pool.btc.com", endpoint: "cn-ubtcpool.api.btc.com"
                 endpoint = accountData.default_url + this.endpointSuffix;
@@ -576,7 +591,7 @@ class PoolAPI {
         };
 
         var result = await PoolAPI.get(account.endpoint, 'worker/share-history', params);
-        if (typeof(result) != 'object') {
+        if (typeof (result) != 'object') {
             throw "获取算力列表失败，结果不是对象：" + JSON.stringify(result);
         }
         if (result.err_no != 0) {
@@ -600,7 +615,7 @@ class PoolAPI {
             }
 
             list.push({
-                date: moment.utc(data[0]*1000).format('YYYY-MM-DD'),
+                date: moment.utc(data[0] * 1000).format('YYYY-MM-DD'),
                 hashrate: data[1] + unit,
                 reject_rate: (data[2] * 100).toString().substr(0, 6) + '%'
             });
@@ -633,7 +648,7 @@ class PoolAPI {
         // 起始时间和结束时间为同一天时得到0,所以+1
         days += 1;
         var fullList = [];
-        
+
         if (days < maxPageSize) {
             addPartPercent(0, '获取算力列表...');
             fullList = this._getHashRate(account, beginTimeStamp, days);
@@ -643,13 +658,13 @@ class PoolAPI {
             var pages = Math.ceil((endTimeStamp - beginTimeStamp) / maxPageTime);
 
             addPartPercent(0, '获取算力列表...');
-            for (var t=beginTimeStamp, i=1; t<=endTimeStamp; t+=maxPageTime, i++) {
+            for (var t = beginTimeStamp, i = 1; t <= endTimeStamp; t += maxPageTime, i++) {
                 days = (endTimeStamp - t) / 24 / 3600 + 1;
                 days = Math.min(maxPageSize, days);
                 var result = await this._getHashRate(account, t, days);
                 fullList = $.extend(fullList, result);
 
-                addPartPercent(100 / pages, '获取算力列表 ('+i+'/'+pages+')');
+                addPartPercent(100 / pages, '获取算力列表 (' + i + '/' + pages + ')');
             }
         }
         return fullList;
@@ -665,7 +680,7 @@ class PoolAPI {
 
         var result = await PoolAPI.get(account.endpoint, 'account/earn-history', params);
 
-        if (typeof(result) != 'object') {
+        if (typeof (result) != 'object') {
             throw "获取收益列表失败，结果不是对象：" + JSON.stringify(result);
         }
         if (result.err_no != 0) {
@@ -696,21 +711,21 @@ class PoolAPI {
         addPartPercent(0, '获取收益列表...');
 
         var minTime = endTimeStamp;
-        for (var p=1; minTime >= beginTimeStamp; p++) {
+        for (var p = 1; minTime >= beginTimeStamp; p++) {
 
             // 整个partList是按照从最新到最老（时间逆序）排列的
             var partList = await PoolAPI._getEarnList(account, p);
 
-            if (typeof(partList) != 'object' || partList.length == undefined || partList.length < 1) {
-                addPartPercent(100 * (pages - p + 1) / pages, '获取收益列表 ('+pages+'/'+pages+')');
+            if (typeof (partList) != 'object' || partList.length == undefined || partList.length < 1) {
+                addPartPercent(100 * (pages - p + 1) / pages, '获取收益列表 (' + pages + '/' + pages + ')');
                 break;
             }
-            addPartPercent(100 / pages, '获取收益列表 ('+p+'/'+pages+')');
+            addPartPercent(100 / pages, '获取收益列表 (' + p + '/' + pages + ')');
 
             for (var i in partList) {
                 var record = partList[i];
                 var time = moment.utc(record.date, 'YYYYMMDD').valueOf();
-                
+
                 // 新于结束时间
                 if (time > endTimeStamp) {
                     continue;
@@ -719,7 +734,7 @@ class PoolAPI {
                 if (time < minTime) {
                     minTime = time;
                 }
-                
+
                 // 老于开始时间
                 if (time < beginTimeStamp) {
                     break;
@@ -784,7 +799,7 @@ class PoolAPI {
         for (var i in earnList) {
             var data = earnList[i];
             var key = data.date;
-            
+
             if (mergedList[key] == undefined) {
                 mergedList[key] = data;
                 mergedList[key].paymentNum = 1;
@@ -797,10 +812,10 @@ class PoolAPI {
                 mergedList[key].paymentNum++;
                 mergedList[key].paid_amount += data.paid_amount;
                 if (data.payment_tx != "") {
-                    mergedList[key].payment_tx    += ' (第' + mergedList[key].paymentNum + '笔)' + data.payment_tx;
+                    mergedList[key].payment_tx += ' (第' + mergedList[key].paymentNum + '笔)' + data.payment_tx;
                 }
                 if (data.address != "") {
-                    mergedList[key].address       += ' (第' + mergedList[key].paymentNum + '笔)' + data.address;
+                    mergedList[key].address += ' (第' + mergedList[key].paymentNum + '笔)' + data.address;
                 }
                 if (data.unpaid_reason != "") {
                     mergedList[key].unpaid_reason += ' (第' + mergedList[key].paymentNum + '笔)' + data.unpaid_reason;
@@ -810,7 +825,7 @@ class PoolAPI {
 
         mergedList = Object.values(mergedList);
 
-        mergedList.sort(function(a, b) {
+        mergedList.sort(function (a, b) {
             return a.date.localeCompare(b.date);
         });
 
@@ -846,7 +861,7 @@ class PoolAPI {
         for (var i in list) {
             var d = list[i];
 
-            if (typeof(d.unpaid_reason) == 'string') {
+            if (typeof (d.unpaid_reason) == 'string') {
                 // 去除逗号和引号
                 d.unpaid_reason = d.unpaid_reason.replace(/[,"]/g, ' ');
             }
@@ -882,7 +897,7 @@ class PoolAPI {
 
         var result = await PoolAPI.get(account.endpoint, 'worker', params);
 
-        if (typeof(result) != 'object') {
+        if (typeof (result) != 'object') {
             throw "获取矿机列表失败，结果不是对象：" + JSON.stringify(result);
         }
         if (result.err_no != 0) {
@@ -900,9 +915,9 @@ class PoolAPI {
             puid: account.puid,
         };
 
-        var result = await PoolAPI.get(account.endpoint, 'worker/'+workerId+'/share-history', params);
+        var result = await PoolAPI.get(account.endpoint, 'worker/' + workerId + '/share-history', params);
 
-        if (typeof(result) != 'object') {
+        if (typeof (result) != 'object') {
             throw "获取矿机算力失败，结果不是对象：" + JSON.stringify(result);
         }
         if (result.err_no != 0) {
@@ -928,13 +943,13 @@ class PoolAPI {
         var count = result.total_count;
         var pages = Math.ceil(count / 1000);
         var workers = result.data;
-        
-        updateProgress(10 / pages, '获取矿机列表 (1/'+pages+')');
 
-        for (let p=2; p<=pages; p++) {
+        updateProgress(10 / pages, '获取矿机列表 (1/' + pages + ')');
+
+        for (let p = 2; p <= pages; p++) {
             var result = await PoolAPI._getWorkers(account, p);
             workers = workers.concat(result.data);
-            updateProgress(10 / pages, '获取矿机列表 ('+p+'/'+pages+')');
+            updateProgress(10 / pages, '获取矿机列表 (' + p + '/' + pages + ')');
         }
 
         var promisePool = [];
@@ -946,9 +961,9 @@ class PoolAPI {
             promisePool.push(request);
 
             if (promisePool.length >= 10 || workerIndex == workers.length) {
-                updateProgress(90 * promisePool.length / count, '获取矿机算力 ('+workerIndex+'/'+count+')');
+                updateProgress(90 * promisePool.length / count, '获取矿机算力 (' + workerIndex + '/' + count + ')');
                 var results = await Promise.all(promisePool);
-                
+
                 for (let k in results) {
                     let hashrates = results[k];
                     let workerName = promisePool[k].worker_name;
@@ -994,7 +1009,7 @@ class PoolAPI {
         var headerFields = [
             "矿机名",
         ];
-        for (let t=beginTimeStamp; t<=endTimeStamp; t+=3600*24*1000) {
+        for (let t = beginTimeStamp; t <= endTimeStamp; t += 3600 * 24 * 1000) {
             headerFields.push(moment.utc(t).format('YYYY-MM-DD'));
             headerFields.push('拒绝率');
         }
@@ -1022,7 +1037,7 @@ class PoolAPI {
 
 class MainWindow {
     static show(content) {
-        ReactDOM.render(content,document.getElementById('MainWindow'));
+        ReactDOM.render(content, document.getElementById('MainWindow'));
     }
 
     static init() {
