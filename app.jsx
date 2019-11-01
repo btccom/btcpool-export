@@ -52,7 +52,7 @@ class DataStore {
             throw "币看监控密钥或观察者链接过短，请确认您已输入完整";
         }
 
-        var parts = ak.match(/https:\/\/([a-zA-Z0-9_-]+)\.pool\.btc\.com\/.*\baccess_key=([a-zA-Z0-9_-]+)/);
+        var parts = ak.match(/https:\/\/(?:([a-zA-Z0-9_-]+)\.)?pool\.btc\.com\/.*\baccess_key=([a-zA-Z0-9_-]+)/);
         if (parts != null) {
             localStorage.setItem("btcpool.watch_only", "true");
             localStorage.setItem("btcpool.region", parts[1]);
@@ -485,7 +485,7 @@ class ExitPage extends React.Component {
 }
 
 class PoolAPI {
-    static defaultEndpoint = 'https://cn-pool.api.btc.com/v1';
+    static defaultEndpoint = 'https://pool.api.btc.com/v1';
     static endpointSuffix = '/v1';
 
     static ak() {
@@ -513,20 +513,6 @@ class PoolAPI {
             defaultEndpoint = DataStore.getEndpoint() + this.endpointSuffix;
             endpoints[DataStore.getEndpoint()] = defaultEndpoint;
             console.log('dev endpoint:', defaultEndpoint);
-        } else {
-            // production servers
-            var nodeList = await PoolAPI.get(defaultEndpoint, 'pool/multi-coin-node-list');
-            if (typeof (nodeList) != 'object') {
-                throw "获取API服务器列表失败，结果不是对象：" + JSON.stringify(nodeList);
-            }
-            if (nodeList.err_no != 0) {
-                throw "获取API服务器列表失败：" + JSON.stringify(nodeList.err_msg);
-            }
-            var endpoints = {};
-            for (var i in nodeList.data) {
-                var node = nodeList.data[i];
-                endpoints[node.default_url] = node.rest_api_endpoint;
-            }
         }
 
         var result = await PoolAPI.get(defaultEndpoint, 'account/sub-account/list');
