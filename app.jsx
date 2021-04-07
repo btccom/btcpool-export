@@ -77,7 +77,10 @@ class DataStore {
     }
 
     static getEndpoint() {
-        return 'https://' + this.getValue("btcpool.region") + '.pool.btc.com';
+        if (this.getValue("btcpool.region") == 'pre' || this.getValue("btcpool.region") == 'beta') {
+            return 'https://' + this.getValue("btcpool.region") + '.pool.btc.com' + PoolAPI.endpointSuffix;
+        }
+        return PoolAPI.defaultEndpoint;
     }
 
     static clearAccessKey() {
@@ -128,7 +131,7 @@ function MainNavBar(props) {
     }
 
     return (
-        <Topbar brand="BTCPool算力导出工具" toggleNavKey="nav">
+        <Topbar brand="BTCPool算力导出工具 v0.2" toggleNavKey="nav">
             <CollapsibleNav eventKey="nav">
                 <Nav topbar>
                     <NavItem active={props.active == "SwitchUser"} onClick={(props) => handleSwitchUser(props)} href="#">切换用户</NavItem>
@@ -505,17 +508,8 @@ class PoolAPI {
     }
 
     static async getSubAccounts() {
-        var defaultEndpoint = PoolAPI.defaultEndpoint;
-        var endpoints = {};
-
-        if (DataStore.getRegion().match(/dev/i)) {
-            // dev servers
-            defaultEndpoint = DataStore.getEndpoint() + this.endpointSuffix;
-            endpoints[DataStore.getEndpoint()] = defaultEndpoint;
-            console.log('dev endpoint:', defaultEndpoint);
-        }
-
-        var result = await PoolAPI.get(defaultEndpoint, 'account/sub-account/list');
+        var endpoint = DataStore.getEndpoint();
+        var result = await PoolAPI.get(endpoint, 'account/sub-account/list');
         if (typeof (result) != 'object') {
             throw "获取子账户列表失败，结果不是对象：" + JSON.stringify(result);
         }
@@ -539,19 +533,6 @@ class PoolAPI {
 
         for (var i in result.data) {
             var accountData = result.data[i];
-            var endpoint = endpoints[accountData.default_url];
-
-            if (typeof (endpoint) != 'string' || endpoint.length == 0) {
-                // default_url: "https://cn.pool.btc.com", endpoint: "cn-pool.api.btc.com"
-                // default_url: "https://cn-ubtc.pool.btc.com", endpoint: "cn-ubtcpool.api.btc.com"
-                endpoint = accountData.default_url + this.endpointSuffix;
-                if (endpoint.match(/^[a-zA-Z0-9]+-/) == null) {
-                    endpoint = endpoint.replace('.pool.', '-pool.api.');
-                } else {
-                    endpoint = endpoint.replace('.pool.', 'pool.api.');
-                }
-            }
-
             var account = {
                 puid: accountData.puid,
                 name: accountData.name,
