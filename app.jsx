@@ -131,7 +131,7 @@ function MainNavBar(props) {
     }
 
     return (
-        <Topbar brand="BTCPool算力导出工具 v0.2.2" toggleNavKey="nav">
+        <Topbar brand="BTCPool算力导出工具 v0.2.3" toggleNavKey="nav">
             <CollapsibleNav eventKey="nav">
                 <Nav topbar>
                     <NavItem active={props.active == "SwitchUser"} onClick={(props) => handleSwitchUser(props)} href="#">切换用户</NavItem>
@@ -488,7 +488,7 @@ class ExitPage extends React.Component {
 }
 
 class PoolAPI {
-    static defaultEndpoint = 'https://bapi.hu60.cn/v1';
+    static defaultEndpoint = 'https://bapi.hu60.cn/v1.php';
     static endpointSuffix = '/v1';
 
     static ak() {
