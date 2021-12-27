@@ -131,7 +131,7 @@ function MainNavBar(props) {
     }
 
     return (
-        <Topbar brand="BTCPool算力导出工具 v0.2.3" toggleNavKey="nav">
+        <Topbar brand="BTCPool算力导出工具 v0.2.4" toggleNavKey="nav">
             <CollapsibleNav eventKey="nav">
                 <Nav topbar>
                     <NavItem active={props.active == "SwitchUser"} onClick={(props) => handleSwitchUser(props)} href="#">切换用户</NavItem>
@@ -549,103 +549,16 @@ class PoolAPI {
         return list;
     }
 
-    static async _getHashRate(account, beginTimeStamp, days) {
-        var params = {
-            puid: account.puid,
-            dimension: '1d',
-            start_ts: beginTimeStamp,
-            count: days,
-        };
-
-        var result = await PoolAPI.get(account.endpoint, 'worker/share-history', params);
-        if (typeof (result) != 'object') {
-            throw "获取算力列表失败，结果不是对象：" + JSON.stringify(result);
-        }
-        if (result.err_no != 0) {
-            throw "获取算力列表失败：" + JSON.stringify(result.err_msg);
-        }
-
-        var list = [/*
-            { date: '2018-01-01', hashrate: '1.25P', reject_rate: '0.5%' },
-            { date: '2018-01-02', hashrate: '2P', reject_rate: '0.3%' },
-            ...
-        */];
-
-        var unit = result.data.shares_unit;
-
-        for (var i in result.data.tickers) {
-            var data = result.data.tickers[i];
-
-            // 当天没有算力就不加入
-            if (data[1] == 0 && data[2] == 0) {
-                continue;
-            }
-
-            list.push({
-                date: moment.utc(data[0] * 1000).format('YYYY-MM-DD'),
-                hashrate: data[1] + unit,
-                reject_rate: (data[2] * 100).toString().substr(0, 6) + '%'
-            });
-        }
-
-        // 该接口会坑爹的返回比预期的多1个元素
-        if (list.length > days) {
-            while (list.length > days) {
-                list.pop();
-            }
-        }
-
-        return list;
-    }
-
-    static async getHashRate(account, beginDate, endDate, addPartPercent) {
-        const maxPageSize = 720; //最大分页大小
-
-        var beginTimeStamp = moment.utc(beginDate).valueOf() / 1000;
-        var endTimeStamp = moment.utc(endDate).valueOf() / 1000;
-        var days = (endTimeStamp - beginTimeStamp) / 3600 / 24;
-
-        if (days < 0) {
-            var t = endTimeStamp;
-            endTimeStamp = beginTimeStamp;
-            beginTimeStamp = t;
-            days = -days;
-        }
-
-        // 起始时间和结束时间为同一天时得到0,所以+1
-        days += 1;
-        var fullList = [];
-
-        if (days < maxPageSize) {
-            addPartPercent(0, '获取算力列表...');
-            fullList = this._getHashRate(account, beginTimeStamp, days);
-            addPartPercent(100, '获取算力列表 (1/1)');
-        } else {
-            var maxPageTime = maxPageSize * 24 * 3600;
-            var pages = Math.ceil((endTimeStamp - beginTimeStamp) / maxPageTime);
-
-            addPartPercent(0, '获取算力列表...');
-            for (var t = beginTimeStamp, i = 1; t <= endTimeStamp; t += maxPageTime, i++) {
-                days = (endTimeStamp - t) / 24 / 3600 + 1;
-                days = Math.min(maxPageSize, days);
-                var result = await this._getHashRate(account, t, days);
-                fullList = $.extend(fullList, result);
-
-                addPartPercent(100 / pages, '获取算力列表 (' + i + '/' + pages + ')');
-            }
-        }
-        return fullList;
-    }
-
     static async _getEarnList(account, page) {
         var params = {
             puid: account.puid,
             page: page,
             reason: 1,
             page_size: 50,
+            is_decimal: 0,
         };
 
-        var result = await PoolAPI.get(account.endpoint, 'account/earn-history', params);
+        var result = await PoolAPI.get(account.endpoint, 'account/earn-history/multi-addr', params);
 
         if (typeof (result) != 'object') {
             throw "获取收益列表失败，结果不是对象：" + JSON.stringify(result);
@@ -657,7 +570,7 @@ class PoolAPI {
         return result.data.list;
     }
 
-    static async getEarnList(account, beginDate, endDate, addPartPercent) {
+    static async getHashRateAndEarnList(account, beginDate, endDate, addPartPercent) {
         var beginTimeStamp = moment.utc(beginDate).valueOf();
         var endTimeStamp = moment.utc(endDate).valueOf();
 
@@ -668,8 +581,8 @@ class PoolAPI {
         }
 
         var fullList = [/*
-            { date: '2018-01-01', earn: 38000, paid_amount: 38000, payment_tx: '', address: '', unpaid_reason: 'xxxxx' },
-            { date: '2018-01-01', earn: 66666666, paid_amount: 66666666, payment_tx: 'xxxxx', address: 'xxxxx', unpaid_reason: '' },
+            { date: '2018-01-01', hashrate: '1.25P', reject_rate: '0.5%', earn: 38000, paid_amount: 38000, payment_tx: '', address: '', unpaid_reason: 'xxxxx' },
+            { date: '2018-01-02', hashrate: '2P', reject_rate: '0.3%', earn: 66666666, paid_amount: 66666666, payment_tx: 'xxxxx', address: 'xxxxx', unpaid_reason: '' },
             ...
         */];
 
@@ -677,6 +590,7 @@ class PoolAPI {
         var pages = Math.ceil(days / 50);
         addPartPercent(0, '获取收益列表...');
 
+        var addedDates = {};
         var minTime = endTimeStamp;
         for (var p = 1; minTime >= beginTimeStamp; p++) {
 
@@ -708,95 +622,38 @@ class PoolAPI {
                 }
 
                 // 符合时间范围，加入到结果中
-                fullList.push({
+
+                // 防止重复添加某个日期（翻页问题可能会导致重复添加）
+                if (addedDates[record.date] == true) {
+                    continue;
+                }
+                addedDates[record.date] = true;
+
+                var result = {
                     date: moment.utc(record.date, 'YYYYMMDD').format('YYYY-MM-DD'),
-                    earn: parseFloat(record.earnings),
-                    paid_amount: parseFloat(record.paid_amount),
-                    payment_tx: record.payment_tx,
-                    address: record.address,
-                    unpaid_reason: record.unpaid_reason,
-                });
+                    hashrate: record.hash_rate + record.hash_rate_unit.replace('H/s', ''),
+                    reject_rate: (record.share_reject / Math.max(record.share_accept + record.share_reject, 1) * 100).toFixed(2) + '%',
+                    earn: record.earnings,
+                    paid_amount: 0,
+                    payment_tx: '',
+                    address: '',
+                    unpaid_reason: '',
+                };
+
+                for (var j in record.addrs) {
+                    var r = record.addrs[j];
+                    var prefix = (record.addrs.length == 1) ? '' : ' (第' + (j+1) + '笔)';
+                    result.payment_tx += prefix + r.payment_tx;
+                    result.address += prefix + r.address;
+                    result.unpaid_reason += prefix + r.unpaid_reason;
+                    result.paid_amount += parseFloat(r.payable);
+                }
+
+                fullList.push(result);
             }
         }
 
         return fullList;
-    }
-
-    static async getHashRateAndEarnList(account, beginDate, endDate, updateProgress) {
-        var addPartPercent = (increasedPercent, text) => {
-            updateProgress(increasedPercent / 2, text);
-        };
-
-        var [hashrateList, earnList] = await Promise.all([
-            PoolAPI.getHashRate(account, beginDate, endDate, addPartPercent),
-            PoolAPI.getEarnList(account, beginDate, endDate, addPartPercent)
-        ]);
-
-        var mergedList = {/*
-            "2018-01-01": {
-                hashrate: '1.25P',
-                reject_rate: '0.5%',
-                earn: 38000,
-                paid_amount: 38000,
-                payment_tx: '',
-                address: '',
-                unpaid_reason: 'xxxxx'
-            },
-            "2018-01-02": {
-                hashrate: '2P',
-                reject_rate: '0.3%',
-                earn: 66666666,
-                paid_amount: 66666666,
-                payment_tx: 'xxxxx',
-                address: 'xxxxx',
-                unpaid_reason: ''
-            },
-            ...
-        */};
-
-        // 合并两个结果集
-
-        for (var i in hashrateList) {
-            var data = hashrateList[i];
-            var key = data.date;
-
-            mergedList[key] = data;
-        }
-
-        for (var i in earnList) {
-            var data = earnList[i];
-            var key = data.date;
-
-            if (mergedList[key] == undefined) {
-                mergedList[key] = data;
-                mergedList[key].paymentNum = 1;
-            }
-            else if (mergedList[key].paid_amount == undefined) {
-                mergedList[key] = $.extend(mergedList[key], data);
-                mergedList[key].paymentNum = 1;
-            }
-            else {
-                mergedList[key].paymentNum++;
-                mergedList[key].paid_amount += data.paid_amount;
-                if (data.payment_tx != "") {
-                    mergedList[key].payment_tx += ' (第' + mergedList[key].paymentNum + '笔)' + data.payment_tx;
-                }
-                if (data.address != "") {
-                    mergedList[key].address += ' (第' + mergedList[key].paymentNum + '笔)' + data.address;
-                }
-                if (data.unpaid_reason != "") {
-                    mergedList[key].unpaid_reason += ' (第' + mergedList[key].paymentNum + '笔)' + data.unpaid_reason;
-                }
-            }
-        }
-
-        mergedList = Object.values(mergedList);
-
-        mergedList.sort(function (a, b) {
-            return a.date.localeCompare(b.date);
-        });
-
-        return mergedList;
     }
 
     static async makeHashrateEarnCSV(account, beginDate, endDate, skipHeader, showAccountName, updateProgress) {
