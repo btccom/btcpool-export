@@ -1,7 +1,7 @@
 BTCPool算力导出工具
 ===================
 
-用 github pages 服务创建的BTCPool数据导出工具，调用了矿池 API。
+用 github pages 服务创建的BTCPool数据导出工具，通过调用矿池 API 实现数据获取。
 
 访问：https://btccom.github.io/btcpool-export/
 
