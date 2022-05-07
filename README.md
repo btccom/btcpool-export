@@ -7,7 +7,9 @@ BTCPool算力导出工具
 
 ### 如何构建
 
-该项目不需要构建，直接修改 app.jsx，然后推送到 github，就能在 https://btccom.github.io/btcpool-export/ 看到更新。
+该项目不需要构建，项目中的 app.jsx 是由 babel.js 解释执行的。
+
+直接修改 app.jsx，然后推送到 github，就能在 https://btccom.github.io/btcpool-export/ 看到更新。
 
 https://btccom.github.io/btcpool-export/index-debug.html 可用于调试。
 
